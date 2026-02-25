@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>전표 기반 회계 처리를 구현한 소규모 사업자용 백엔드 서비스
+
+    </title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <style>
+        :root {
+            --bg: #f8fafc;
+            --card-bg: #ffffff;
+            --primary: #2563eb;
+            --success: #059669;
+            --danger: #dc2626;
+            --warning: #d97706;
+            --text-main: #0f172a;
+            --text-sub: #64748b;
+        }
+
+        body {
+            margin: 0;
+            font-family: 'Pretendard', -apple-system, sans-serif;
+            background-color: var(--bg);
+            color: var(--text-main);
+            padding: 50px 20px;
+        }
+
+        .container { max-width: 1100px; margin: 0 auto; }
+
+        /* 대시보드 상단 헤더 */
+        .header-section { margin-bottom: 40px; }
+        .title { font-size: 32px; font-weight: 800; letter-spacing: -0.03em; margin: 0; }
+        .subtitle { color: var(--text-sub); margin-top: 10px; font-size: 16px; }
+
+        /* 요약 카드 섹션 */
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 24px;
+            margin-bottom: 30px;
+        }
+
+        .stat-card {
+            background: var(--card-bg);
+            padding: 35px 25px;
+            border-radius: 24px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.04);
+            border: 1px solid rgba(0,0,0,0.05);
+            text-align: center;
+        }
+
+        .stat-label { font-size: 15px; font-weight: 600; color: var(--text-sub); margin-bottom: 15px; }
+        .stat-value { font-size: 38px; font-weight: 800; }
+
+        .card-revenue .stat-value { color: var(--success); }
+        .card-expense .stat-value { color: var(--danger); }
+        .card-ratio .stat-value { color: var(--warning); }
+
+        /* 지출률 진행 바 */
+        .progress-box {
+            background: var(--card-bg);
+            padding: 30px;
+            border-radius: 24px;
+            margin-bottom: 40px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.04);
+        }
+
+        .progress-info { display: flex; justify-content: space-between; margin-bottom: 15px; font-weight: 700; }
+        .progress-bg { width: 100%; height: 40px; background: #e2e8f0; border-radius: 20px; overflow: hidden; }
+        .progress-fill { 
+            width: 30%; 
+            height: 100%; 
+            background: linear-gradient(90deg, #10b981, #059669); 
+            display: flex; align-items: center; justify-content: center; 
+            color: white; font-weight: 800; font-size: 15px;
+        }
+
+        /* 테이블 영역 */
+        .table-container {
+            background: var(--card-bg);
+            padding: 25px;
+            border-radius: 24px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.04);
+        }
+
+        table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+        th { text-align: left; padding: 15px; color: var(--text-sub); border-bottom: 2px solid #f1f5f9; font-size: 13px; }
+        td { padding: 18px 15px; border-bottom: 1px solid #f1f5f9; font-size: 14px; }
+        
+        .status-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--success); margin-right: 6px; }
+
+        @media (max-width: 768px) { .dashboard-grid { grid-template-columns: 1fr; } }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="header-section">
+        <h1 class="title">SmallBiz 실시간 경영 리포트</h1>
+        <p class="subtitle">소규모 사업자를 위한 핵심 지표 기반 전표 관리 시스템</p>
+    </div>
+
+    <div class="stat-card card-revenue">
+      <div class="stat-label">총 매출 금액</div>
+      <div class="stat-value">₩ 100,000,000</div>
+    </div>
+    <div class="stat-card card-expense">
+      <div class="stat-label">총 비용 금액</div>
+      <div class="stat-value">₩ 30,000,000</div>
+    </div>
+    <div class="stat-card card-ratio">
+      <div class="stat-label">매출 대비 비용 비율</div>
+      <div class="stat-value">30%</div>
+    </div>
+
+    <div class="progress-box">
+        <div class="progress-info">
+            <span>사업 지출 안전도</span>
+            <span style="color: var(--success)">안정 수준</span>
+        </div>
+        <div class="progress-bg">
+            <div class="progress-fill">지출률 30%</div>
+        </div>
+    </div>
+
+    <div class="table-container">
+        <h3 style="margin: 0 0 15px 0;">최근 전표 내역</h3>
+        <table>
+            <thead>
+                <tr>
+                    <th>분개일자</th>
+                    <th>적요</th>
+                    <th>차변 금액</th>
+                    <th>대변 금액</th>
+                    <th>상태</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>2026-02-25</td>
+                    <td>스타벅스 커피 결제 (접대비)</td>
+                    <td>15,000</td>
+                    <td>0</td>
+                    <td><span class="status-dot"></span>정상</td>
+                </tr>
+                <tr>
+                    <td>2026-02-25</td>
+                    <td>FastAPI 전환 후 첫 전표 입력 성공!</td>
+                    <td>10,000</td>
+                    <td>0</td>
+                    <td><span class="status-dot"></span>정상</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+</body>
+</html>

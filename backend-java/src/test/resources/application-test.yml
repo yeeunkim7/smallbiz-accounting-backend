@@ -1,0 +1,13 @@
+# Uses a dedicated PostgreSQL database. Do not point this at the Python app DB
+# or the Java development database. Set TEST_DB_URL, TEST_DB_USERNAME, TEST_DB_PASSWORD.
+spring:
+  datasource:
+    url: ${TEST_DB_URL}
+    username: ${TEST_DB_USERNAME}
+    password: ${TEST_DB_PASSWORD}
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+  flyway:
+    enabled: true

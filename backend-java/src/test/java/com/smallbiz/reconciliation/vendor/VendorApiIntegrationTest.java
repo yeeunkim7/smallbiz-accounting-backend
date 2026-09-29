@@ -8,11 +8,12 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -20,8 +21,8 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
 
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -39,6 +40,19 @@ class VendorApiIntegrationTest {
 
 	@Autowired
 	private JdbcTemplate jdbcTemplate;
+
+	@BeforeAll
+	static void rejectDevelopmentDatabase() {
+		String testUrl = requiredEnv("TEST_DB_URL");
+		String devUrl = System.getenv("DB_URL");
+		if (devUrl != null && !devUrl.isBlank() && testUrl.equals(devUrl)) {
+			throw new IllegalStateException("TEST_DB_URL must not be the same as DB_URL.");
+		}
+		String testDatabase = jdbcDatabaseName(testUrl);
+		if ("reconciliation_dev".equals(testDatabase)) {
+			throw new IllegalStateException("TEST_DB_URL must not point at reconciliation_dev.");
+		}
+	}
 
 	@BeforeEach
 	void setUp() {
@@ -194,5 +208,23 @@ class VendorApiIntegrationTest {
 		mockMvc.perform(get("/health"))
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$.status").value("UP"));
+	}
+
+	private static String requiredEnv(String name) {
+		String value = System.getenv(name);
+		if (value == null || value.isBlank()) {
+			throw new IllegalStateException(name + " must be set for integration tests.");
+		}
+		return value;
+	}
+
+	private static String jdbcDatabaseName(String jdbcUrl) {
+		int slash = jdbcUrl.lastIndexOf('/');
+		if (slash < 0 || slash == jdbcUrl.length() - 1) {
+			throw new IllegalStateException("TEST_DB_URL is not a JDBC URL with a database name.");
+		}
+		String name = jdbcUrl.substring(slash + 1);
+		int query = name.indexOf('?');
+		return (query >= 0 ? name.substring(0, query) : name).toLowerCase();
 	}
 }

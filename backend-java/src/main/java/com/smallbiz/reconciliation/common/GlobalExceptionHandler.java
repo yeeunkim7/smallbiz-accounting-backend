@@ -21,6 +21,7 @@ import org.springframework.web.method.annotation.MethodArgumentTypeMismatchExcep
 import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import org.springframework.web.multipart.support.MissingServletRequestPartException;
 
+import com.smallbiz.reconciliation.reconciliation.InvalidReconciliationQueryException;
 import com.smallbiz.reconciliation.upload.DuplicateSourceLineIdException;
 import com.smallbiz.reconciliation.upload.DuplicateUploadFileException;
 import com.smallbiz.reconciliation.upload.PayloadTooLargeException;
@@ -116,7 +117,6 @@ public class GlobalExceptionHandler {
 
 	@ExceptionHandler({
 			MissingServletRequestPartException.class,
-			MissingServletRequestParameterException.class,
 			HttpMediaTypeNotSupportedException.class
 	})
 	public ResponseEntity<ErrorResponse> handleMissingUploadFile(Exception ex) {
@@ -127,6 +127,27 @@ public class GlobalExceptionHandler {
 						List.of(new FieldErrorResponse("file", "업로드할 파일이 없습니다."))
 				));
 	}
+
+	@ExceptionHandler(MissingServletRequestParameterException.class)
+	public ResponseEntity<ErrorResponse> handleMissingParameter(MissingServletRequestParameterException ex) {
+		return ResponseEntity.badRequest()
+				.body(ErrorResponse.of(
+						ErrorCode.INVALID_INPUT,
+						"요청 값이 올바르지 않습니다.",
+						List.of(new FieldErrorResponse(ex.getParameterName(), "필수 값입니다."))
+				));
+	}
+
+	@ExceptionHandler(InvalidReconciliationQueryException.class)
+	public ResponseEntity<ErrorResponse> handleInvalidReconciliationQuery(InvalidReconciliationQueryException ex) {
+		return ResponseEntity.badRequest()
+				.body(ErrorResponse.of(
+						ErrorCode.INVALID_INPUT,
+						ex.getMessage(),
+						List.of(ex.getFieldError())
+				));
+	}
+
 	@ExceptionHandler(DuplicateVendorCodeException.class)
 	public ResponseEntity<ErrorResponse> handleDuplicateVendorCode(DuplicateVendorCodeException ex) {
 		return ResponseEntity.status(HttpStatus.CONFLICT)

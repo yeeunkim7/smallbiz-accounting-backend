@@ -6,8 +6,8 @@ Java 백엔드 MVP 설계다. 인증 없는 로컬 개발용이며 가상 거래
 
 ## 현재 구현 / 후속 구현
 
-- 구현됨: 애플리케이션 기동, `GET /health`, 거래처 등록·목록·단건·수정, 업무 CSV 업로드, **은행 CSV 업로드** (`POST /api/v1/uploads/bank`).
-- 후속: 일별·월별 집계, 원본 조회, 검토 상태.
+- 구현됨: 애플리케이션 기동, `GET /health`, 거래처, 업무·은행 CSV 업로드, **일별·월별 집계 조회**.
+- 후속: 원본 조회, 검토 상태.
 
 원본 CSV 바이트는 보관하지 않는다. 업로드 메타데이터와 정규화된 행만 저장하므로 원본 파일 재다운로드는 제공하지 않는다.
 
@@ -113,6 +113,38 @@ CHARGE_EXPECTED는 PREPAID, SETTLEMENT_EXPECTED는 POSTPAID만. REFUND_EXPECTED�
 - 애플리케이션 사전 검사와 DB UNIQUE를 함께 사용한다.
 - 검토 상태는 이번 범위에서 저장하지 않는다. 업로드 이력과 원본 행만 한 트랜잭션으로 저장한다.
 
+## 일별·월별 집계 조회
+
+`GET /api/v1/reconciliations/daily?from=&to=` (양끝 포함, 최대 366일), `GET /api/v1/reconciliations/monthly?yearMonth=YYYY-MM`.
+
+- 예정 입금: `CHARGE_EXPECTED`·`SETTLEMENT_EXPECTED`, 날짜 `expected_cash_date`. 예정 출금: `REFUND_EXPECTED`. `USAGE` 제외.
+- 실제 입금/출금: 은행 `IN`/`OUT`, 날짜 `booked_date`.
+- 입금 차이 = 실제 입금 − 예정 입금. 출금 차이 = 실제 출금 − 예정 출금. 상계하지 않음.
+- 합계 상태: `TOTAL_EQUAL` / `TOTAL_DIFF`. `MATCHED`/`REVIEWED` 사용 안 함.
+- `sourcePresence`: `BOTH` / `BUSINESS_ONLY` / `BANK_ONLY`.
+- 금액은 JSON 정수(`long`). PostgreSQL `SUM(bigint)`은 `numeric`이라 집계 SQL에서 `::bigint`로 맞춘다. 응답은 원 단위 정수.
+- `::bigint`는 signed 64비트 범위(-9,223,372,036,854,775,808 ~ 9,223,372,036,854,775,807)를 넘으면 오류를 낸다. 조용히 잘리거나 감싸지지 않는다. 행 금액 CHECK는 1 ~ 1,000,000,000,000원이다. Java 월 합계는 `Math.addExact`로 같은 범위를 넘으면 실패한다.
+- 저장 집계 테이블 없음. 조회는 원본을 변경하지 않음.
+- 업무·은행을 날짜별로 각각 `GROUP BY`한 뒤 날짜로 붙인다. 원본 행 JOIN은 같은 날짜 행 수만큼 금액이 곱해질 수 있다.
+- V5: `business_event(expected_cash_date)`는 `WHERE expected_cash_date IS NOT NULL` 부분 인덱스다. 컬럼은 NULL 허용이며 USAGE의 `expected_cash_date IS NULL` 규칙과 맞춘다. `bank_transaction(booked_date)`는 일반 인덱스. 측정 없이 성능 숫자는 주장하지 않음.
+
+합성 예 (2026-09-03 선불 50만+후불 80만 예정 입금, 은행 입금 40만+90만, 환불 예정·출금 각 3만, USAGE 제외. 9/5 업무만 예정 입금 1000. 9/6 은행만 입금 2000. USAGE만 있는 9/7 제외):
+
+| date | expectedIn | actualIn | inDiff | expectedOut | actualOut | outDiff | presence |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | --- |
+| 2026-09-03 | 1300000 | 1300000 | 0 | 30000 | 30000 | 0 | BOTH |
+| 2026-09-05 | 1000 | 0 | -1000 | 0 | 0 | 0 | BUSINESS_ONLY |
+| 2026-09-06 | 0 | 2000 | 2000 | 0 | 0 | 0 | BANK_ONLY |
+
+월별 합성 예 (9/1 예정 입금 100, 9/2 실제 입금 100. 8/31·10/1은 월 밖):
+
+| yearMonth | expectedIn | actualIn | inDiff | expectedOut | actualOut | outDiff | inStatus | dataDayCount | differenceDayCount |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | --- | ---: | ---: |
+| 2026-09 | 100 | 100 | 0 | 0 | 0 | 0 | TOTAL_EQUAL | 2 | 2 |
+| 2026-01 | 0 | 0 | 0 | 0 | 0 | 0 | TOTAL_EQUAL | 0 | 0 |
+
+월 합계 차이가 0이어도 날짜별 차이는 남을 수 있으므로 `differenceDayCount`를 따로 둔다.
+
 ## 검토 상태 (후속)
 
 금액 합계 상태와 사람 검토 상태는 분리한다.
@@ -142,7 +174,7 @@ CHARGE_EXPECTED는 PREPAID, SETTLEMENT_EXPECTED는 POSTPAID만. REFUND_EXPECTED�
 
 ## 테이블 (후속 포함)
 
-현재 Flyway: `vendor`(V1), `upload_file`·`business_event`(V2), SHA VARCHAR(V3), `file_type=BANK`·`bank_transaction`(V4). 검토 테이블은 후속.
+현재 Flyway: V1 vendor, V2 upload_file·business_event, V3 SHA VARCHAR, V4 BANK·bank_transaction, V5 조회용 날짜 인덱스. 검토 테이블은 후속.
 
 | 테이블 | 역할 | 유일성 |
 | --- | --- | --- |
@@ -168,11 +200,12 @@ CHARGE_EXPECTED는 PREPAID, SETTLEMENT_EXPECTED는 POSTPAID만. REFUND_EXPECTED�
 
 - `POST /api/v1/uploads/business` 201 (multipart `file`)
 - `POST /api/v1/uploads/bank` 201 (multipart `file`)
+- `GET /api/v1/reconciliations/daily?from=&to=` 200
+- `GET /api/v1/reconciliations/monthly?yearMonth=` 200
 
 후속:
 
 - `GET /uploads`, `GET /uploads/{id}`
-- `GET /reconciliations/daily`, `GET /reconciliations/monthly`
 - `GET /reconciliations/daily/{date}/business-events`
 - `GET /reconciliations/daily/{date}/bank-transactions`
 - `GET /vendors/{id}/business-events`

@@ -23,11 +23,11 @@ preview/snapshot은 사용하지 않는다.
 - 거래처 등록·목록·단건·수정 (`/api/v1/vendors`)
 - 업무 CSV 업로드 (`POST /api/v1/uploads/business`)
 - 은행 CSV 업로드 (`POST /api/v1/uploads/bank`)
-- Flyway V1 `vendor`, V2 `upload_file` / `business_event`, V3 SHA `VARCHAR`, V4 `BANK` 타입과 `bank_transaction`
+- 일별·월별 집계 (`GET /api/v1/reconciliations/daily`, `.../monthly`)
+- Flyway V1–V5 (V5는 조회 날짜 인덱스)
 
 ## 후속 예정 (미구현)
 
-- 일별·월별 입출금 집계와 차이 조회
 - 날짜별 원본 조회, 검토 상태·메모
 
 원본 CSV 파일 자체는 저장하지 않는다. 재다운로드 API는 없다.
@@ -220,6 +220,17 @@ curl.exe -s -D - -X POST http://localhost:8081/api/v1/uploads/bank -F "file=@doc
 
 업무와 은행에 같은 `source_line_id` 문자열이 있어도 테이블이 다르면 각각 저장된다. 파일 내용 SHA-256은 `upload_file` 전역 UNIQUE다.
 
+## 일별·월별 집계
+
+단일 회사·단일 계좌. 거래처별 대사는 없다. 금액은 원 단위 JSON 정수(`long`). DB `SUM`을 `::bigint`로 맞출 때 signed 64비트 범위를 넘으면 오류다. 자세한 한도는 [docs/design.md](docs/design.md)를 본다.
+
+```powershell
+curl.exe -s "http://localhost:8080/api/v1/reconciliations/daily?from=2026-09-01&to=2026-09-30"
+curl.exe -s "http://localhost:8080/api/v1/reconciliations/monthly?yearMonth=2026-09"
+```
+
+입금 차이 = 실제 입금 − 예정 입금, 출금 차이 = 실제 출금 − 예정 출금. `USAGE`와 이용일만 있는 날은 제외. 상태는 `TOTAL_EQUAL` / `TOTAL_DIFF`. 상세 계산과 합성 예는 [docs/design.md](docs/design.md)를 본다.
+
 ## 패키지
 
-기능별로 `health`, `vendor`, `upload`, `common`을 둔다. 업로드는 Controller → Facade(파싱, 트랜잭션 밖) → Service(`@Transactional` 저장) → Repository → DB 순이다. 파일 크기·SHA-256은 `UploadFileSupport`를 업무·은행이 같이 쓰고, 행 검증은 각 CSV 파서가 담당한다.
+기능별로 `health`, `vendor`, `upload`, `reconciliation`, `common`을 둔다. 업로드는 Controller → Facade(파싱, 트랜잭션 밖) → Service(`@Transactional` 저장) → Repository → DB 순이다. 집계는 Controller → Service(읽기 전용) → `JdbcTemplate` 집계 SQL → DB 순이다.

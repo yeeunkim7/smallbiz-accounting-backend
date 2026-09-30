@@ -2,9 +2,17 @@
 
 업무 데이터의 입출금 예정과 은행 거래 실제액을 비교하는 MVP용 Spring Boot 애플리케이션이다. 이 디렉터리가 실행 단위다.
 
-저장소 루트의 Python FastAPI 앱(`app/`)은 기존 전표 실험 코드다. **삭제하거나 대체하지 않는다.** 두 앱은 DB도 프로세도 분리한다. Python 쪽 SQLite/기존 PostgreSQL 스키마를 이 앱이 변경하지 않는다.
+저장소 루트의 안내는 [../README.md](../README.md)를 본다. Python FastAPI 앱(`app/`)은 기존 전표 실험 코드다. **삭제하거나 대체하지 않는다.** 두 앱은 DB도 프로세도 분리한다.
 
 설계 상세는 [docs/design.md](docs/design.md)를 본다.
+
+## 진행 상태
+
+원격 `main`에 있는 기능: 헬스, 거래처, 업무·은행 CSV 업로드, 일별·월별 집계 (Flyway V1–V5).
+
+로컬에서 이어서 구현 중(미커밋): 날짜별 원본 조회, 업로드 이력 조회.
+
+후속: 검토 상태·메모. 화면은 아직 없다.
 
 ## 버전
 
@@ -19,6 +27,8 @@ preview/snapshot은 사용하지 않는다.
 
 ## 현재 구현
 
+원격 `main` 기준:
+
 - `GET /health` — 프로세스 기동만. DB를 보장하지 않는다.
 - 거래처 등록·목록·단건·수정 (`/api/v1/vendors`)
 - 업무 CSV 업로드 (`POST /api/v1/uploads/business`)
@@ -26,9 +36,15 @@ preview/snapshot은 사용하지 않는다.
 - 일별·월별 집계 (`GET /api/v1/reconciliations/daily`, `.../monthly`)
 - Flyway V1–V5 (V5는 조회 날짜 인덱스)
 
+로컬 구현 중(미커밋):
+
+- 날짜별 업무·은행 원본 (`GET /api/v1/reconciliations/daily/{date}/business`, `.../bank`)
+- 업로드 이력 (`GET /api/v1/uploads`, `GET /api/v1/uploads/{uploadId}`)
+
 ## 후속 예정 (미구현)
 
-- 날짜별 원본 조회, 검토 상태·메모
+- 검토 상태·메모
+- 화면
 
 원본 CSV 파일 자체는 저장하지 않는다. 재다운로드 API는 없다.
 
@@ -231,6 +247,29 @@ curl.exe -s "http://localhost:8080/api/v1/reconciliations/monthly?yearMonth=2026
 
 입금 차이 = 실제 입금 − 예정 입금, 출금 차이 = 실제 출금 − 예정 출금. `USAGE`와 이용일만 있는 날은 제외. 상태는 `TOTAL_EQUAL` / `TOTAL_DIFF`. 상세 계산과 합성 예는 [docs/design.md](docs/design.md)를 본다.
 
+## 날짜별 원본
+
+집계에 들어간 행만 본다. 업무는 `USAGE` 제외. 거래처를 은행 행에 붙이지 않는다. page 기본 0, size 기본 20, 최대 100. 정렬은 `source_row_number`, `id`.
+
+```powershell
+curl.exe -s "http://localhost:8080/api/v1/reconciliations/daily/2026-09-03/business"
+curl.exe -s "http://localhost:8080/api/v1/reconciliations/daily/2026-09-03/bank?page=0&size=20"
+```
+
+데이터가 없으면 200과 빈 `content`다.
+
+## 업로드 이력
+
+성공 저장된 `upload_file`만 조회한다. 원본 CSV 다운로드와 전체 행 반환은 없다. `fileType`은 `BUSINESS` 또는 `BANK`이며 생략하면 전체다. 정렬은 `uploadedAt` 내림차순, 같으면 `id` 내림차순.
+
+```powershell
+curl.exe -s "http://localhost:8080/api/v1/uploads"
+curl.exe -s "http://localhost:8080/api/v1/uploads?fileType=BANK"
+curl.exe -s "http://localhost:8080/api/v1/uploads/1"
+```
+
+없는 `uploadId`는 404 `UPLOAD_NOT_FOUND`.
+
 ## 패키지
 
-기능별로 `health`, `vendor`, `upload`, `reconciliation`, `common`을 둔다. 업로드는 Controller → Facade(파싱, 트랜잭션 밖) → Service(`@Transactional` 저장) → Repository → DB 순이다. 집계는 Controller → Service(읽기 전용) → `JdbcTemplate` 집계 SQL → DB 순이다.
+기능별로 `health`, `vendor`, `upload`, `reconciliation`, `common`을 둔다. 업로드는 Controller → Facade(파싱, 트랜잭션 밖) → Service(`@Transactional` 저장) → Repository → DB 순이다. 집계는 Controller → Service(읽기 전용) → `JdbcTemplate` 집계 SQL → DB 순이다. 원본·이력 조회는 Controller → Service(읽기 전용) → Repository → DB 순이다.

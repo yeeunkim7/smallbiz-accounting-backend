@@ -11,7 +11,9 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.validation.FieldError;
+import org.springframework.web.HttpMediaTypeNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.HandlerMethodValidationException;
@@ -37,6 +39,7 @@ public class GlobalExceptionHandler {
 	private static final String VENDOR_SETTLEMENT_TYPE_CHECK = "ck_vendor_settlement_type";
 	private static final String UPLOAD_FILE_SHA256_UNIQUE = "uk_upload_file_content_sha256";
 	private static final String BUSINESS_SOURCE_LINE_UNIQUE = "uk_business_event_source_line_id";
+	private static final String BANK_SOURCE_LINE_UNIQUE = "uk_bank_transaction_source_line_id";
 
 	@ExceptionHandler(MethodArgumentNotValidException.class)
 	public ResponseEntity<ErrorResponse> handleMethodArgumentNotValid(MethodArgumentNotValidException ex) {
@@ -111,13 +114,17 @@ public class GlobalExceptionHandler {
 				.body(ErrorResponse.of(ErrorCode.PAYLOAD_TOO_LARGE, "파일 크기가 허용 한도를 초과했습니다."));
 	}
 
-	@ExceptionHandler(MissingServletRequestPartException.class)
-	public ResponseEntity<ErrorResponse> handleMissingPart(MissingServletRequestPartException ex) {
+	@ExceptionHandler({
+			MissingServletRequestPartException.class,
+			MissingServletRequestParameterException.class,
+			HttpMediaTypeNotSupportedException.class
+	})
+	public ResponseEntity<ErrorResponse> handleMissingUploadFile(Exception ex) {
 		return ResponseEntity.badRequest()
 				.body(ErrorResponse.of(
 						ErrorCode.INVALID_INPUT,
 						"요청 값이 올바르지 않습니다.",
-						java.util.List.of(new FieldErrorResponse("file", "업로드할 파일이 없습니다."))
+						List.of(new FieldErrorResponse("file", "업로드할 파일이 없습니다."))
 				));
 	}
 	@ExceptionHandler(DuplicateVendorCodeException.class)
@@ -136,7 +143,8 @@ public class GlobalExceptionHandler {
 			return ResponseEntity.status(HttpStatus.CONFLICT)
 					.body(ErrorResponse.of(ErrorCode.DUPLICATE_UPLOAD_FILE, "이미 업로드된 파일입니다."));
 		}
-		if (constraintNameContains(ex, BUSINESS_SOURCE_LINE_UNIQUE)) {
+		if (constraintNameContains(ex, BUSINESS_SOURCE_LINE_UNIQUE)
+				|| constraintNameContains(ex, BANK_SOURCE_LINE_UNIQUE)) {
 			return ResponseEntity.status(HttpStatus.CONFLICT)
 					.body(ErrorResponse.of(ErrorCode.DUPLICATE_SOURCE_LINE_ID, "이미 저장된 원천 거래 ID가 포함되어 있습니다."));
 		}

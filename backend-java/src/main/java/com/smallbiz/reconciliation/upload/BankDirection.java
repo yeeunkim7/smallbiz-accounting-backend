@@ -1,6 +1,6 @@
 package com.smallbiz.reconciliation.upload;
 
-public enum UploadFileType {
-	BUSINESS,
-	BANK
+public enum BankDirection {
+	IN,
+	OUT
 }

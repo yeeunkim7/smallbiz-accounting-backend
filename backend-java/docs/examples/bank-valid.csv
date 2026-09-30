@@ -1,0 +1,3 @@
+booked_date,direction,amount,counterparty_name,description,source_line_id
+2026-09-03,IN,500000,가상입금,9월 입금,BANK-20260903-001
+2026-09-12,OUT,30000,,현금 환불 출금,BANK-20260912-001

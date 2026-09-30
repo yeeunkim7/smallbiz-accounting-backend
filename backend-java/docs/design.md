@@ -6,8 +6,8 @@ Java 백엔드 MVP 설계다. 인증 없는 로컬 개발용이며 가상 거래
 
 ## 현재 구현 / 후속 구현
 
-- 구현됨: 애플리케이션 기동, `GET /health`, 거래처 등록·목록·단건·수정, **업무 CSV 업로드** (`POST /api/v1/uploads/business`).
-- 후속: 은행 CSV 업로드, 일별·월별 집계, 원본 조회, 검토 상태.
+- 구현됨: 애플리케이션 기동, `GET /health`, 거래처 등록·목록·단건·수정, 업무 CSV 업로드, **은행 CSV 업로드** (`POST /api/v1/uploads/bank`).
+- 후속: 일별·월별 집계, 원본 조회, 검토 상태.
 
 원본 CSV 바이트는 보관하지 않는다. 업로드 메타데이터와 정규화된 행만 저장하므로 원본 파일 재다운로드는 제공하지 않는다.
 
@@ -25,6 +25,17 @@ CSV 파서는 **Apache Commons CSV 1.14.0**을 사용한다. 따옴표·필드 �
 - 동일 내용 SHA-256, `source_line_id` 중복은 409. 검증 오류는 400(최대 100개, `truncated`). 크기 초과 413.
 
 CHARGE_EXPECTED는 PREPAID, SETTLEMENT_EXPECTED는 POSTPAID만. REFUND_EXPECTED와 USAGE는 둘 다 허용.
+
+## 은행 CSV 업로드
+
+헤더(이름·순서 고정):
+
+`booked_date,direction,amount,counterparty_name,description,source_line_id`
+
+- UTF-8, BOM 허용. 최대 5MiB, 데이터 최대 10,000행. 해시·한도·오류 100개/`truncated`는 업무 CSV와 같다.
+- `direction`은 `IN` 또는 `OUT`. 입금자명으로 거래처를 연결하지 않으며 `vendor_id`를 저장하지 않는다.
+- 은행 `source_line_id` UNIQUE는 `bank_transaction`에만 적용한다. 업무 테이블과 같은 문자열 ID여도 중복이 아니다.
+- 실패 시 이번 요청의 `upload_file`/`bank_transaction`은 남지 않는다.
 
 ## 대사 기준
 
@@ -92,15 +103,15 @@ CHARGE_EXPECTED는 PREPAID, SETTLEMENT_EXPECTED는 POSTPAID만. REFUND_EXPECTED�
 - 업무 테이블과 은행 테이블 각각에서 `source_line_id` UNIQUE.
 - 합성 데이터에는 안정적인 ID를 부여한다. 실제 은행 파일에 동일 필드가 있다고 가정하지 않는다. 실제 은행 연동은 MVP 밖이다.
 
-## 업로드 중복 및 원자성 (업무 CSV 구현됨, 은행은 후속)
+## 업로드 중복 및 원자성
 
-- 동일 파일: 내용 SHA-256으로 중복 검사.
+- 동일 파일: 내용 SHA-256으로 중복 검사(`upload_file` 전역).
 - 같은 파일 안 중복 `source_line_id`는 오류.
-- 다른 파일에 이미 저장된 `source_line_id`가 있으면 **파일 전체 거절**.
+- 같은 종류 테이블에 이미 저장된 `source_line_id`가 있으면 **파일 전체 거절**.
 - 필수값·날짜·금액·유형 오류가 있으면 파일 전체를 저장하지 않는다.
 - 오류 응답 `fieldErrors`: `rowNumber`(헤더=1인 CSV 레코드 번호, 파일 전체 오류는 null), `field`, `message`. 100개를 넘으면 `truncated: true`.
 - 애플리케이션 사전 검사와 DB UNIQUE를 함께 사용한다.
-- 검토 상태는 이번 범위에서 저장하지 않는다. 업무 CSV는 업로드 이력과 업무 행만 한 트랜잭션으로 저장한다.
+- 검토 상태는 이번 범위에서 저장하지 않는다. 업로드 이력과 원본 행만 한 트랜잭션으로 저장한다.
 
 ## 검토 상태 (후속)
 
@@ -131,14 +142,14 @@ CHARGE_EXPECTED는 PREPAID, SETTLEMENT_EXPECTED는 POSTPAID만. REFUND_EXPECTED�
 
 ## 테이블 (후속 포함)
 
-현재 Flyway: `vendor`(V1), `upload_file`·`business_event`(V2), `content_sha256` VARCHAR(V3). 은행·검토 테이블은 후속.
+현재 Flyway: `vendor`(V1), `upload_file`·`business_event`(V2), SHA VARCHAR(V3), `file_type=BANK`·`bank_transaction`(V4). 검토 테이블은 후속.
 
 | 테이블 | 역할 | 유일성 |
 | --- | --- | --- |
 | vendor | 거래처 마스터 | vendor_code |
 | upload_file | 파일 종류, 원본 이름, SHA-256, 시각 | content_sha256 |
 | business_event | 업무 원본 1행, source_row_number, vendor FK | source_line_id |
-| bank_transaction | 은행 원본 1행, source_row_number. vendor_id는 MVP에서 NULL | source_line_id |
+| bank_transaction | 은행 원본 1행, source_row_number. 거래처 FK 없음 | source_line_id |
 | daily_review | 날짜별 검토 상태·메모 | review_date |
 
 일별 합계는 조회 시 집계한다. 확정 저장하지 않는다.
@@ -156,10 +167,10 @@ CHARGE_EXPECTED는 PREPAID, SETTLEMENT_EXPECTED는 POSTPAID만. REFUND_EXPECTED�
 - `PUT /api/v1/vendors/{id}` 200 (이름·정산 방식만)
 
 - `POST /api/v1/uploads/business` 201 (multipart `file`)
+- `POST /api/v1/uploads/bank` 201 (multipart `file`)
 
 후속:
 
-- `POST /api/v1/uploads/bank`
 - `GET /uploads`, `GET /uploads/{id}`
 - `GET /reconciliations/daily`, `GET /reconciliations/monthly`
 - `GET /reconciliations/daily/{date}/business-events`

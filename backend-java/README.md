@@ -22,11 +22,11 @@ preview/snapshot은 사용하지 않는다.
 - `GET /health` — 프로세스 기동만. DB를 보장하지 않는다.
 - 거래처 등록·목록·단건·수정 (`/api/v1/vendors`)
 - 업무 CSV 업로드 (`POST /api/v1/uploads/business`)
-- Flyway V1 `vendor`, V2 `upload_file` / `business_event`, V3 `content_sha256`를 `VARCHAR(64)`로 맞춤
+- 은행 CSV 업로드 (`POST /api/v1/uploads/bank`)
+- Flyway V1 `vendor`, V2 `upload_file` / `business_event`, V3 SHA `VARCHAR`, V4 `BANK` 타입과 `bank_transaction`
 
 ## 후속 예정 (미구현)
 
-- 은행 CSV 업로드
 - 일별·월별 입출금 집계와 차이 조회
 - 날짜별 원본 조회, 검토 상태·메모
 
@@ -198,6 +198,28 @@ V-PRE-01,USAGE,2026-09-03,,12.5,오류,BIZ-MIX-002
 
 파일 한도 5MiB, 데이터 10,000행. 동일 파일(내용 SHA-256) 또는 `source_line_id` 중복은 409. 검증 실패 시 이번 요청에서 추가한 `upload_file`/`business_event`는 남지 않는다. 원본 CSV 바이트는 보관하지 않는다.
 
+## 은행 CSV 업로드
+
+거래처 사전 등록은 필요 없다. 입금자명으로 거래처를 연결하지 않는다.
+
+**정상 예** (`docs/examples/bank-valid.csv`)
+
+```text
+booked_date,direction,amount,counterparty_name,description,source_line_id
+2026-09-03,IN,500000,가상입금,9월 입금,BANK-20260903-001
+2026-09-12,OUT,30000,,현금 환불 출금,BANK-20260912-001
+```
+
+PowerShell에서 JSON·CSV는 파일을 통째로 보낸다. 최신 앱을 8081에서 띄운 경우 포트만 바꾼다.
+
+```powershell
+curl.exe -s -D - -X POST http://localhost:8081/api/v1/uploads/bank -F "file=@docs/examples/bank-valid.csv;type=text/csv"
+```
+
+성공 시 201, 같은 파일 재업로드는 409. 금액 오류 예: `docs/examples/bank-invalid-amount.csv` → 400.
+
+업무와 은행에 같은 `source_line_id` 문자열이 있어도 테이블이 다르면 각각 저장된다. 파일 내용 SHA-256은 `upload_file` 전역 UNIQUE다.
+
 ## 패키지
 
-기능별로 `health`, `vendor`, `upload`, `common`을 둔다. 업로드는 Controller → Facade(파싱, 트랜잭션 밖) → Service(`@Transactional` 저장) → Repository → DB 순이다.
+기능별로 `health`, `vendor`, `upload`, `common`을 둔다. 업로드는 Controller → Facade(파싱, 트랜잭션 밖) → Service(`@Transactional` 저장) → Repository → DB 순이다. 파일 크기·SHA-256은 `UploadFileSupport`를 업무·은행이 같이 쓰고, 행 검증은 각 CSV 파서가 담당한다.

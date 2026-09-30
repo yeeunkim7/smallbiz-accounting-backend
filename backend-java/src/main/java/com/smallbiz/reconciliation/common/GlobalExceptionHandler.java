@@ -16,7 +16,13 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.HandlerMethodValidationException;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
+import org.springframework.web.multipart.support.MissingServletRequestPartException;
 
+import com.smallbiz.reconciliation.upload.DuplicateSourceLineIdException;
+import com.smallbiz.reconciliation.upload.DuplicateUploadFileException;
+import com.smallbiz.reconciliation.upload.PayloadTooLargeException;
+import com.smallbiz.reconciliation.upload.UploadValidationException;
 import com.smallbiz.reconciliation.vendor.DuplicateVendorCodeException;
 import com.smallbiz.reconciliation.vendor.VendorNotFoundException;
 
@@ -29,6 +35,8 @@ public class GlobalExceptionHandler {
 
 	private static final String VENDOR_CODE_UNIQUE = "uk_vendor_vendor_code";
 	private static final String VENDOR_SETTLEMENT_TYPE_CHECK = "ck_vendor_settlement_type";
+	private static final String UPLOAD_FILE_SHA256_UNIQUE = "uk_upload_file_content_sha256";
+	private static final String BUSINESS_SOURCE_LINE_UNIQUE = "uk_business_event_source_line_id";
 
 	@ExceptionHandler(MethodArgumentNotValidException.class)
 	public ResponseEntity<ErrorResponse> handleMethodArgumentNotValid(MethodArgumentNotValidException ex) {
@@ -74,6 +82,44 @@ public class GlobalExceptionHandler {
 				.body(ErrorResponse.of(ErrorCode.VENDOR_NOT_FOUND, ex.getMessage()));
 	}
 
+	@ExceptionHandler(UploadValidationException.class)
+	public ResponseEntity<ErrorResponse> handleUploadValidation(UploadValidationException ex) {
+		return ResponseEntity.badRequest()
+				.body(ErrorResponse.of(ErrorCode.INVALID_INPUT, ex.getMessage(), ex.getFieldErrors(), ex.isTruncated()));
+	}
+
+	@ExceptionHandler(DuplicateUploadFileException.class)
+	public ResponseEntity<ErrorResponse> handleDuplicateUploadFile(DuplicateUploadFileException ex) {
+		return ResponseEntity.status(HttpStatus.CONFLICT)
+				.body(ErrorResponse.of(ErrorCode.DUPLICATE_UPLOAD_FILE, ex.getMessage()));
+	}
+
+	@ExceptionHandler(DuplicateSourceLineIdException.class)
+	public ResponseEntity<ErrorResponse> handleDuplicateSourceLineId(DuplicateSourceLineIdException ex) {
+		return ResponseEntity.status(HttpStatus.CONFLICT)
+				.body(ErrorResponse.of(
+						ErrorCode.DUPLICATE_SOURCE_LINE_ID,
+						ex.getMessage(),
+						ex.getFieldErrors(),
+						ex.isTruncated()
+				));
+	}
+
+	@ExceptionHandler({PayloadTooLargeException.class, MaxUploadSizeExceededException.class})
+	public ResponseEntity<ErrorResponse> handlePayloadTooLarge(Exception ex) {
+		return ResponseEntity.status(HttpStatus.PAYLOAD_TOO_LARGE)
+				.body(ErrorResponse.of(ErrorCode.PAYLOAD_TOO_LARGE, "파일 크기가 허용 한도를 초과했습니다."));
+	}
+
+	@ExceptionHandler(MissingServletRequestPartException.class)
+	public ResponseEntity<ErrorResponse> handleMissingPart(MissingServletRequestPartException ex) {
+		return ResponseEntity.badRequest()
+				.body(ErrorResponse.of(
+						ErrorCode.INVALID_INPUT,
+						"요청 값이 올바르지 않습니다.",
+						java.util.List.of(new FieldErrorResponse("file", "업로드할 파일이 없습니다."))
+				));
+	}
 	@ExceptionHandler(DuplicateVendorCodeException.class)
 	public ResponseEntity<ErrorResponse> handleDuplicateVendorCode(DuplicateVendorCodeException ex) {
 		return ResponseEntity.status(HttpStatus.CONFLICT)
@@ -85,6 +131,14 @@ public class GlobalExceptionHandler {
 		if (constraintNameContains(ex, VENDOR_CODE_UNIQUE)) {
 			return ResponseEntity.status(HttpStatus.CONFLICT)
 					.body(ErrorResponse.of(ErrorCode.DUPLICATE_VENDOR_CODE, "이미 사용 중인 거래처 코드입니다."));
+		}
+		if (constraintNameContains(ex, UPLOAD_FILE_SHA256_UNIQUE)) {
+			return ResponseEntity.status(HttpStatus.CONFLICT)
+					.body(ErrorResponse.of(ErrorCode.DUPLICATE_UPLOAD_FILE, "이미 업로드된 파일입니다."));
+		}
+		if (constraintNameContains(ex, BUSINESS_SOURCE_LINE_UNIQUE)) {
+			return ResponseEntity.status(HttpStatus.CONFLICT)
+					.body(ErrorResponse.of(ErrorCode.DUPLICATE_SOURCE_LINE_ID, "이미 저장된 원천 거래 ID가 포함되어 있습니다."));
 		}
 		if (constraintNameContains(ex, VENDOR_SETTLEMENT_TYPE_CHECK)) {
 			return ResponseEntity.badRequest()

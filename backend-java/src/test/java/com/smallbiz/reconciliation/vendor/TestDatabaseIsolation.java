@@ -1,12 +1,18 @@
 package com.smallbiz.reconciliation.vendor;
 
-final class TestDatabaseIsolation {
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.SQLException;
+
+public final class TestDatabaseIsolation {
 
 	private TestDatabaseIsolation() {
 	}
 
-	static void assertNotDevelopmentDatabase() {
+	public static void assertNotDevelopmentDatabase() {
 		String testUrl = requiredEnv("TEST_DB_URL");
+		String username = requiredEnv("TEST_DB_USERNAME");
+		requiredEnv("TEST_DB_PASSWORD");
 		String devUrl = System.getenv("DB_URL");
 		if (devUrl != null && !devUrl.isBlank() && testUrl.equals(devUrl)) {
 			throw new IllegalStateException("TEST_DB_URL must not be the same as DB_URL.");
@@ -14,6 +20,35 @@ final class TestDatabaseIsolation {
 		String testDatabase = jdbcDatabaseName(testUrl);
 		if ("reconciliation_dev".equals(testDatabase)) {
 			throw new IllegalStateException("TEST_DB_URL must not point at reconciliation_dev.");
+		}
+		if (username.chars().allMatch(Character::isDigit)) {
+			throw new IllegalStateException(
+					"TEST_DB_USERNAME must be the PostgreSQL role name, not a number. "
+							+ "The password was probably entered as the username."
+			);
+		}
+		assertCredentialsAccepted(testUrl, username, System.getenv("TEST_DB_PASSWORD"));
+	}
+
+	private static void assertCredentialsAccepted(String url, String username, String password) {
+		try {
+			Class.forName("org.postgresql.Driver");
+			try (Connection ignored = DriverManager.getConnection(url, username, password)) {
+				return;
+			}
+		}
+		catch (ClassNotFoundException ex) {
+			throw new IllegalStateException("PostgreSQL JDBC driver is required for integration tests.");
+		}
+		catch (SQLException ex) {
+			if ("28P01".equals(ex.getSQLState())) {
+				throw new IllegalStateException(
+						"PostgreSQL rejected TEST_DB_USERNAME/TEST_DB_PASSWORD (SQLState 28P01). "
+								+ "Use the database role that can connect to reconciliation_test. "
+								+ "Do not put the password in TEST_DB_USERNAME."
+				);
+			}
+			throw new IllegalStateException("Cannot connect to TEST_DB_URL for integration tests.", ex);
 		}
 	}
 

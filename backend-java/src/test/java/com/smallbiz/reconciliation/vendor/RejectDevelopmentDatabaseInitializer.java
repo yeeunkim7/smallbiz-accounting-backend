@@ -3,7 +3,7 @@ package com.smallbiz.reconciliation.vendor;
 import org.springframework.context.ApplicationContextInitializer;
 import org.springframework.context.ConfigurableApplicationContext;
 
-class RejectDevelopmentDatabaseInitializer
+public class RejectDevelopmentDatabaseInitializer
 		implements ApplicationContextInitializer<ConfigurableApplicationContext> {
 
 	@Override

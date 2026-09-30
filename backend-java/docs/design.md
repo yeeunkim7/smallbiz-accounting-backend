@@ -6,8 +6,25 @@ Java 백엔드 MVP 설계다. 인증 없는 로컬 개발용이며 가상 거래
 
 ## 현재 구현 / 후속 구현
 
-- 구현됨: 애플리케이션 기동, `GET /health`, 거래처 등록·목록·단건·수정.
-- 후속: CSV 업로드, 일별·월별 집계, 원본 조회, 검토 상태. 이 문서의 업로드·대사·검토 규칙은 후속 구현 시 따른다.
+- 구현됨: 애플리케이션 기동, `GET /health`, 거래처 등록·목록·단건·수정, **업무 CSV 업로드** (`POST /api/v1/uploads/business`).
+- 후속: 은행 CSV 업로드, 일별·월별 집계, 원본 조회, 검토 상태.
+
+원본 CSV 바이트는 보관하지 않는다. 업로드 메타데이터와 정규화된 행만 저장하므로 원본 파일 재다운로드는 제공하지 않는다.
+
+CSV 파서는 **Apache Commons CSV 1.14.0**을 사용한다. 따옴표·필드 안 쉼표·따옴표 안 개행을 `split(",")`로 나누지 않는다. UTF-8 BOM은 선두 3바이트를 제거한다.
+
+## 업무 CSV 업로드
+
+헤더(이름·순서 고정):
+
+`vendor_code,event_type,usage_date,expected_cash_date,amount,note,source_line_id`
+
+- UTF-8, UTF-8 BOM 허용. 최대 5MiB, 데이터 최대 10,000행.
+- `source_row_number`는 헤더=1인 CSV 레코드 번호(첫 데이터=2). 물리 텍스트 줄 번호가 아니다.
+- 실패 시 이번 요청에서 추가할 `upload_file`/`business_event`는 남지 않는다. 실패 이력은 저장하지 않는다.
+- 동일 내용 SHA-256, `source_line_id` 중복은 409. 검증 오류는 400(최대 100개, `truncated`). 크기 초과 413.
+
+CHARGE_EXPECTED는 PREPAID, SETTLEMENT_EXPECTED는 POSTPAID만. REFUND_EXPECTED와 USAGE는 둘 다 허용.
 
 ## 대사 기준
 
@@ -20,7 +37,7 @@ Java 백엔드 MVP 설계다. 인증 없는 로컬 개발용이며 가상 거래
 - 입금과 출금을 상계하지 않는다.
 - 일별 **합계**가 같은 것과 개별 거래 확인 완료는 다른 상태다. 합계용 이름에 `MATCHED` / `RECONCILED`를 쓰지 않는다.
 
-선불 거래처에 후불 청구 예정, 후불 거래처에 충전 예정이 오면 업로드 검증 오류로 본다. (후속)
+선불 거래처에 후불 청구 예정, 후불 거래처에 충전 예정이 오면 업로드 검증 오류(400)다.
 
 ## 대사 범위
 
@@ -37,7 +54,9 @@ Java 백엔드 MVP 설계다. 인증 없는 로컬 개발용이며 가상 거래
 - `double` / `float` 사용 금지. MVP에서 소수 원화가 없으므로 `BigDecimal`도 쓰지 않는다.
 - 검증: 정수만, `> 0`, 상한 1조(1_000_000_000_000). CSV에 소수점이 있으면 행 오류.
 
-## CSV 양식 (후속)
+## CSV 양식
+
+인코딩 UTF-8(BOM 허용), 헤더 1레코드, 날짜 `YYYY-MM-DD`, 금액은 콤마·소수점 없는 정수.
 
 인코딩 UTF-8, 헤더 1행, 날짜 `YYYY-MM-DD`, 금액은 콤마 없는 정수.
 
@@ -73,15 +92,15 @@ Java 백엔드 MVP 설계다. 인증 없는 로컬 개발용이며 가상 거래
 - 업무 테이블과 은행 테이블 각각에서 `source_line_id` UNIQUE.
 - 합성 데이터에는 안정적인 ID를 부여한다. 실제 은행 파일에 동일 필드가 있다고 가정하지 않는다. 실제 은행 연동은 MVP 밖이다.
 
-## 업로드 중복 및 원자성 (후속)
+## 업로드 중복 및 원자성 (업무 CSV 구현됨, 은행은 후속)
 
 - 동일 파일: 내용 SHA-256으로 중복 검사.
 - 같은 파일 안 중복 `source_line_id`는 오류.
 - 다른 파일에 이미 저장된 `source_line_id`가 있으면 **파일 전체 거절**.
 - 필수값·날짜·금액·유형 오류가 있으면 파일 전체를 저장하지 않는다.
-- 오류 응답: `source_row_number`, 필드, 원인.
+- 오류 응답 `fieldErrors`: `rowNumber`(헤더=1인 CSV 레코드 번호, 파일 전체 오류는 null), `field`, `message`. 100개를 넘으면 `truncated: true`.
 - 애플리케이션 사전 검사와 DB UNIQUE를 함께 사용한다.
-- 업로드 저장과 영향 날짜의 검토 상태 변경은 **같은 트랜잭션**에서 처리한다.
+- 검토 상태는 이번 범위에서 저장하지 않는다. 업무 CSV는 업로드 이력과 업무 행만 한 트랜잭션으로 저장한다.
 
 ## 검토 상태 (후속)
 
@@ -112,7 +131,7 @@ Java 백엔드 MVP 설계다. 인증 없는 로컬 개발용이며 가상 거래
 
 ## 테이블 (후속 포함)
 
-현재 Flyway: `vendor`만 생성한다. 아래는 후속 마이그레이션 대상이다.
+현재 Flyway: `vendor`(V1), `upload_file`·`business_event`(V2), `content_sha256` VARCHAR(V3). 은행·검토 테이블은 후속.
 
 | 테이블 | 역할 | 유일성 |
 | --- | --- | --- |
@@ -136,9 +155,11 @@ Java 백엔드 MVP 설계다. 인증 없는 로컬 개발용이며 가상 거래
 - `GET /api/v1/vendors/{id}` 200
 - `PUT /api/v1/vendors/{id}` 200 (이름·정산 방식만)
 
+- `POST /api/v1/uploads/business` 201 (multipart `file`)
+
 후속:
 
-- `POST /uploads/business`, `POST /uploads/bank`
+- `POST /api/v1/uploads/bank`
 - `GET /uploads`, `GET /uploads/{id}`
 - `GET /reconciliations/daily`, `GET /reconciliations/monthly`
 - `GET /reconciliations/daily/{date}/business-events`
@@ -146,7 +167,7 @@ Java 백엔드 MVP 설계다. 인증 없는 로컬 개발용이며 가상 거래
 - `GET /vendors/{id}/business-events`
 - `PUT /reconciliations/daily/{date}/review`
 
-공통 오류: `code`, `message`, 필요 시 `fieldErrors`. 400 입력, 404 없음, 409 거래처 코드 중복. DB 원문·스택은 응답에 넣지 않는다. UNIQUE가 아닌 무결성 오류를 코드 중복으로 매핑하지 않는다.
+공통 오류: `code`, `message`, 필요 시 `fieldErrors`. 400 입력, 404 없음, 409 거래처 코드·동일 파일 해시·`source_line_id` 중복, 413 파일 크기. DB 원문·스택은 응답에 넣지 않는다. UNIQUE가 아닌 무결성 오류를 중복으로 매핑하지 않는다.
 
 ## 미해결
 

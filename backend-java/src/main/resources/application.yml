@@ -16,6 +16,11 @@ spring:
           time_zone: UTC
   flyway:
     enabled: true
+  servlet:
+    multipart:
+      # 업무 CSV 본문은 5MiB. multipart 경계·헤더가 붙어도 요청이 먼저 거절되지 않도록 여유를 둔다.
+      max-file-size: 6MB
+      max-request-size: 7MB
 
 server:
   error:

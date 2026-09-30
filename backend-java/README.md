@@ -19,15 +19,18 @@ preview/snapshot은 사용하지 않는다.
 
 ## 현재 구현
 
-- `GET /health` — 애플리케이션이 떠 있으면 `{"status":"UP"}`. **DB 상태를 검사하지 않는다.**
-- 거래처 CRUD 중 등록·목록·단건·수정 (`/api/v1/vendors`)
-- Flyway로 `vendor` 테이블 생성 (Java 전용 DB)
+- `GET /health` — 프로세스 기동만. DB를 보장하지 않는다.
+- 거래처 등록·목록·단건·수정 (`/api/v1/vendors`)
+- 업무 CSV 업로드 (`POST /api/v1/uploads/business`)
+- Flyway V1 `vendor`, V2 `upload_file` / `business_event`, V3 `content_sha256`를 `VARCHAR(64)`로 맞춤
 
 ## 후속 예정 (미구현)
 
-- 업무 CSV / 은행 CSV 업로드
+- 은행 CSV 업로드
 - 일별·월별 입출금 집계와 차이 조회
 - 날짜별 원본 조회, 검토 상태·메모
+
+원본 CSV 파일 자체는 저장하지 않는다. 재다운로드 API는 없다.
 
 ## 실행 환경
 
@@ -75,16 +78,25 @@ $env:DB_PASSWORD="..."
 .\gradlew.bat bootRun
 ```
 
-테스트:
+테스트 (`reconciliation_test` 전용. `reconciliation_dev`와 같은 URL이면 가드가 거부한다):
 
 ```powershell
-$env:TEST_DB_URL="jdbc:postgresql://localhost:5432/reconciliation_test"
-$env:TEST_DB_USERNAME="..."
-$env:TEST_DB_PASSWORD="..."
-.\gradlew.bat test
+if (-not $env:JAVA_HOME) {
+  $env:JAVA_HOME = "C:\Program Files\Eclipse Adoptium\jdk-21.0.12.101-hotspot"
+  $env:PATH = "$env:JAVA_HOME\bin;$env:PATH"
+}
+$env:TEST_DB_URL = "jdbc:postgresql://localhost:5432/reconciliation_test"
+# 첫 입력은 PostgreSQL 역할 이름이다. 비밀번호·숫자를 넣지 않는다.
+$env:TEST_DB_USERNAME = Read-Host "PostgreSQL role name"
+$secure = Read-Host "PostgreSQL password" -AsSecureString
+$bstr = [Runtime.InteropServices.Marshal]::SecureStringToBSTR($secure)
+$env:TEST_DB_PASSWORD = [Runtime.InteropServices.Marshal]::PtrToStringUni($bstr)
+[Runtime.InteropServices.Marshal]::ZeroFreeBSTR($bstr)
+.\gradlew.bat test --no-daemon --rerun-tasks
+Remove-Item Env:TEST_DB_PASSWORD
 ```
 
-H2는 사용하지 않는다. `TEST_DB_*`가 없으면 테스트는 실패하는 것이 정상이다.
+비밀번호는 위처럼 현재 세션에서만 넣고, 명령에 평문을 적지 않는다. H2는 사용하지 않는다. `TEST_DB_*`가 없으면 테스트는 실패하는 것이 정상이다.
 
 ## API 예시 (가상 거래처)
 
@@ -129,6 +141,63 @@ curl.exe -s -X PUT http://localhost:8080/api/v1/vendors/1 `
 }
 ```
 
+PowerShell에서 JSON을 직접 `-d`로 넣으면 따옴표가 깨질 수 있다. 거래처는 UTF-8 파일로 보내는 것이 안전하다.
+
+## 업무 CSV 업로드
+
+CSV 파서: Apache Commons CSV 1.14.0 (Java 8+, Maven Central; Boot 4.1.1 / Java 21과 함께 컴파일됨). `split(",")`는 사용하지 않는다. UTF-8 BOM은 파싱 전에 선두 3바이트만 제거한다. 파일 내용 SHA-256은 BOM을 포함한 원본 바이트 기준이다.
+
+**1. 가상 거래처 등록** (이미 있으면 생략)
+
+`C:\pg-temp\v-pre.json`:
+
+```json
+{"vendorCode":"V-PRE-01","vendorName":"가상 선불 거래처","settlementType":"PREPAID"}
+```
+
+`C:\pg-temp\v-post.json`:
+
+```json
+{"vendorCode":"V-POST-01","vendorName":"가상 후불 거래처","settlementType":"POSTPAID"}
+```
+
+```powershell
+curl.exe -s -D - -X POST http://localhost:8080/api/v1/vendors -H "Content-Type: application/json" --data-binary "@C:\pg-temp\v-pre.json"
+curl.exe -s -D - -X POST http://localhost:8080/api/v1/vendors -H "Content-Type: application/json" --data-binary "@C:\pg-temp\v-post.json"
+```
+
+**2. 정상 CSV 예** (`docs/examples/business-valid.csv`)
+
+```text
+vendor_code,event_type,usage_date,expected_cash_date,amount,note,source_line_id
+V-PRE-01,CHARGE_EXPECTED,,2026-09-03,500000,9월 선불 충전 요청,BIZ-20260903-001
+V-PRE-01,USAGE,2026-09-03,,12000,사용 — 대사 제외,BIZ-20260903-002
+V-POST-01,SETTLEMENT_EXPECTED,2026-08-15,2026-09-10,800000,8월분 후불 정산,BIZ-20260910-001
+V-POST-01,REFUND_EXPECTED,2026-09-05,2026-09-12,30000,현금 환불 예정,BIZ-20260912-001
+```
+
+`backend-java` 디렉터리에서:
+
+```powershell
+curl.exe -s -D - -X POST http://localhost:8080/api/v1/uploads/business -F "file=@docs/examples/business-valid.csv;type=text/csv"
+```
+
+따옴표 안 개행·쉼표 비고 예: `docs/examples/business-quoted-note.csv` (거래처 `V-POST-01` 필요).
+
+성공 시 201, `uploadId`, `originalFilename`, `rowCount`, `uploadedAt`.
+
+**3. 오류 CSV 예** (금액이 정수가 아님 → 400, DB에 이번 요청 행이 남지 않음)
+
+```text
+vendor_code,event_type,usage_date,expected_cash_date,amount,note,source_line_id
+V-PRE-01,CHARGE_EXPECTED,,2026-09-03,500000,정상,BIZ-MIX-001
+V-PRE-01,USAGE,2026-09-03,,12.5,오류,BIZ-MIX-002
+```
+
+헤더 오류 예: `docs/examples/business-invalid-header.csv`.
+
+파일 한도 5MiB, 데이터 10,000행. 동일 파일(내용 SHA-256) 또는 `source_line_id` 중복은 409. 검증 실패 시 이번 요청에서 추가한 `upload_file`/`business_event`는 남지 않는다. 원본 CSV 바이트는 보관하지 않는다.
+
 ## 패키지
 
-기능별로 `health`, `vendor`, `common`만 둔다. 거래처 요청은 Controller → Service → Repository → DB 순이다. Entity를 API 본문으로 쓰지 않는다.
+기능별로 `health`, `vendor`, `upload`, `common`을 둔다. 업로드는 Controller → Facade(파싱, 트랜잭션 밖) → Service(`@Transactional` 저장) → Repository → DB 순이다.

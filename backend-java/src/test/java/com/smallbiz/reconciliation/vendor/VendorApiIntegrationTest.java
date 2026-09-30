@@ -50,6 +50,8 @@ class VendorApiIntegrationTest {
 
 	@BeforeEach
 	void setUp() {
+		jdbcTemplate.update("DELETE FROM business_event");
+		jdbcTemplate.update("DELETE FROM upload_file");
 		vendorRepository.deleteAll();
 	}
 

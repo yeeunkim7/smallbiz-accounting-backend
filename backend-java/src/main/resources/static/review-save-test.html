@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+	<meta charset="UTF-8">
+	<title>검토 저장 로직 확인</title>
+</head>
+<body>
+	<pre id="out"></pre>
+	<script src="js/review-save.js"></script>
+	<script>
+		var out = document.getElementById("out");
+		var failed = 0;
+		function assert(name, cond) {
+			if (!cond) {
+				failed += 1;
+				out.textContent += "실패: " + name + "\n";
+			} else {
+				out.textContent += "통과: " + name + "\n";
+			}
+		}
+		var S = window.ReconReviewSave;
+		assert("재확인을 PUT 상태로 직접 저장 불가", S.allowedPutStatus("NEEDS_RECHECK") === false);
+		assert("미검토 저장 가능", S.allowedPutStatus("UNREVIEWED") === true);
+		var payload = S.buildPutPayload("REVIEWED", "확인 메모", 3);
+		assert("PUT에 version 포함", payload.version === 3 && payload.status === "REVIEWED" && payload.memo === "확인 메모");
+		var loadedRecheck = { status: "NEEDS_RECHECK", version: 7, memo: "이전 메모" };
+		var afterRecheck = S.putFromLoadedReview(loadedRecheck, "REVIEWED", "재확인 후 완료");
+		assert("재확인 날짜를 최신 version으로 검토 완료 저장 허용", afterRecheck.status === "REVIEWED" && afterRecheck.version === 7 && afterRecheck.memo === "재확인 후 완료");
+		var conflict = S.interpretPutHttp(409, { code: "REVIEW_VERSION_CONFLICT", message: "충돌" });
+		assert("409는 자동 재저장 없이 재조회", conflict.ok === false && conflict.conflict === true && conflict.reloadRequired === true);
+		assert("조회 전후 version 변경 감지", S.versionsChanged(1, 2) === true);
+		assert("같은 version은 변경 아님", S.versionsChanged(4, 4) === false);
+		var ok = S.interpretPutHttp(200, { status: "REVIEWED", version: 5 });
+		assert("200은 성공", ok.ok === true && ok.review.version === 5);
+		out.textContent += failed === 0 ? "\n전체 통과" : "\n실패 " + failed + "건";
+		document.title = failed === 0 ? "OK" : "FAIL";
+	</script>
+</body>
+</html>

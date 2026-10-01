@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+	<meta charset="UTF-8">
+	<title>거래처·업로드 로직 확인</title>
+</head>
+<body>
+	<pre id="out"></pre>
+	<script src="js/vendor-forms.js"></script>
+	<script src="js/upload-client.js"></script>
+	<script>
+		var out = document.getElementById("out");
+		var failed = 0;
+		var realFetch = window.fetch;
+		var fetchCalls = [];
+		window.fetch = function () {
+			fetchCalls.push(Array.prototype.slice.call(arguments));
+			return Promise.reject(new Error("모의 검증에서 실제 요청이 나갔습니다."));
+		};
+		function assert(name, cond) {
+			if (!cond) {
+				failed += 1;
+				out.textContent += "실패: " + name + "\n";
+			} else {
+				out.textContent += "통과: " + name + "\n";
+			}
+		}
+		var V = window.ReconVendorForms;
+		var U = window.ReconUploadClient;
+
+		var createPayload = V.buildCreatePayload(" v-pre-01 ", "가상 선불", "PREPAID");
+		assert("등록 본문은 코드·이름·정산 방식", createPayload.vendorCode === "v-pre-01" && createPayload.vendorName === "가상 선불" && createPayload.settlementType === "PREPAID");
+		var createReq = V.describeCreateRequest(V.buildCreatePayload("V-PRE-01", "가상 선불", "PREPAID"));
+		assert("등록은 POST /api/v1/vendors JSON", createReq.method === "POST" && createReq.path === "/api/v1/vendors" && createReq.headers["Content-Type"] === "application/json");
+
+		var updatePayload = V.buildUpdatePayload("새 이름", "POSTPAID");
+		assert("수정 본문에 코드 없음", updatePayload.vendorCode === undefined && updatePayload.vendorName === "새 이름" && updatePayload.settlementType === "POSTPAID");
+		var updateReq = V.describeUpdateRequest(12, updatePayload);
+		assert("수정은 PUT /api/v1/vendors/{id}", updateReq.method === "PUT" && updateReq.path === "/api/v1/vendors/12");
+
+		var created = V.interpretVendorHttp(201, { id: 1, vendorCode: "V-PRE-01", vendorName: "가상 선불", settlementType: "PREPAID" });
+		assert("등록 201 성공", created.ok === true && created.vendor.id === 1);
+		var updated = V.interpretVendorHttp(200, { id: 1, vendorName: "새 이름", settlementType: "POSTPAID" });
+		assert("수정 200 성공", updated.ok === true && updated.vendor.vendorName === "새 이름");
+
+		var dup = V.interpretVendorHttp(409, { code: "DUPLICATE_VENDOR_CODE", message: "이미 사용 중인 거래처 코드입니다." });
+		assert("중복 409 한국어", dup.ok === false && dup.conflict === true && dup.message.indexOf("이미 사용 중인 거래처 코드") >= 0);
+		var bad = V.interpretVendorHttp(400, {
+			code: "INVALID_INPUT",
+			message: "요청 값이 올바르지 않습니다.",
+			fieldErrors: [{ field: "vendorCode", message: "거래처 코드는 필수입니다." }]
+		});
+		assert("입력 400 필드 오류", bad.ok === false && bad.fieldErrors[0].field === "vendorCode");
+		var formKept = { vendorCode: "V-PRE-01", vendorName: "유지", settlementType: "PREPAID" };
+		assert("오류 후에도 입력 객체 유지", formKept.vendorCode === "V-PRE-01" && formKept.vendorName === "유지");
+
+		assert("업무 경로", U.uploadPath("BUSINESS") === "/api/v1/uploads/business");
+		assert("은행 경로", U.uploadPath("BANK") === "/api/v1/uploads/bank");
+		var blob = new Blob(["vendor_code,event_type\n"], { type: "text/csv" });
+		var file = new File([blob], "sample.csv", { type: "text/csv" });
+		var fd = U.buildUploadFormData(file);
+		var upReq = U.describeUploadRequest("BUSINESS", fd);
+		assert("FormData file 필드", U.formDataHasFileField(fd) === true && fd.get("file") === file);
+		assert("업로드 POST와 경로", upReq.method === "POST" && upReq.path === "/api/v1/uploads/business" && upReq.fileField === "file");
+		assert("Content-Type은 브라우저가 설정", upReq.omitContentType === true && upReq.headers["Content-Type"] === undefined);
+
+		var bankReq = U.describeUploadRequest("BANK", U.buildUploadFormData(file));
+		assert("은행 업로드 경로", bankReq.path === "/api/v1/uploads/bank");
+
+		var okUp = U.interpretUploadHttp(201, { uploadId: 3, originalFilename: "sample.csv", rowCount: 2, uploadedAt: "2026-09-03T00:00:00Z" });
+		assert("업로드 201 성공", okUp.ok === true && okUp.saved === true && okUp.upload.rowCount === 2);
+
+		var row400 = U.interpretUploadHttp(400, {
+			code: "INVALID_INPUT",
+			message: "요청 값이 올바르지 않습니다.",
+			truncated: true,
+			fieldErrors: [
+				{ field: "file", message: "CSV 헤더가 없습니다." },
+				{ rowNumber: 3, field: "amount", message: "금액은 콤마·소수점·부호 없는 원화 정수여야 합니다." }
+			]
+		});
+		assert("400 필드·레코드 오류", row400.ok === false && row400.saved === false && row400.truncated === true);
+		assert("400 파일 전체 오류", U.formatFieldError(row400.fieldErrors[0]).indexOf("file") >= 0);
+		assert("400 CSV 레코드 번호", U.formatFieldError(row400.fieldErrors[1]).indexOf("CSV 레코드 3") >= 0);
+		assert("실패 시 미저장 안내", row400.notSaved === "이번 요청은 저장되지 않았습니다.");
+
+		var dupFile = U.interpretUploadHttp(409, { code: "DUPLICATE_UPLOAD_FILE", message: "이미 업로드된 파일입니다." });
+		assert("409 파일 중복", dupFile.conflict === true && dupFile.message.indexOf("이미 업로드된 파일") >= 0 && dupFile.saved === false);
+		var dupLine = U.interpretUploadHttp(409, {
+			code: "DUPLICATE_SOURCE_LINE_ID",
+			message: "이미 저장된 원천 거래 ID가 포함되어 있습니다.",
+			truncated: true,
+			fieldErrors: [{ rowNumber: 4, field: "source_line_id", message: "이미 저장된 원천 거래 ID입니다." }]
+		});
+		assert("409 원천 ID와 truncated", dupLine.truncated === true && U.formatFieldError(dupLine.fieldErrors[0]).indexOf("CSV 레코드 4") >= 0);
+
+		var tooBig = U.interpretUploadHttp(413, { code: "PAYLOAD_TOO_LARGE", message: "파일 크기가 허용 한도를 초과했습니다." });
+		assert("413 크기 제한", tooBig.tooLarge === true && tooBig.sizeHint.indexOf("5MiB") >= 0 && tooBig.notSaved.indexOf("저장되지 않았습니다") >= 0);
+
+		var net = U.interpretUploadNetworkError();
+		assert("네트워크는 미저장 단정 금지", net.unknown === true && net.saved === null && net.notSaved === null);
+		assert("이력 확인 안내", net.message.indexOf("업로드 이력") >= 0 && net.message.indexOf("다시 보내") >= 0);
+
+		assert("실제 fetch 호출 없음", fetchCalls.length === 0);
+		out.textContent += failed === 0 ? "\n전체 통과" : "\n실패 " + failed + "건";
+		document.title = failed === 0 ? "OK" : "FAIL";
+		window.fetch = realFetch;
+	</script>
+</body>
+</html>

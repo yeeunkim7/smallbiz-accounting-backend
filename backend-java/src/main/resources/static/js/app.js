@@ -5,6 +5,14 @@
 	var loadSeq = 0;
 	var dayState = null;
 	var saving = false;
+	var vendorPage = 0;
+	var vendorEditId = null;
+	var vendorSaving = false;
+	var uploadsPage = 0;
+	var uploadsFilter = "";
+	var selectedUploadId = null;
+	var uploading = false;
+	var reconEpoch = 0;
 
 	function $(id) {
 		return document.getElementById(id);
@@ -117,6 +125,15 @@
 		if (parts[0] === "day" && parts[1]) {
 			return { view: "day", date: parts[1] };
 		}
+		if (parts[0] === "upload") {
+			return { view: "upload" };
+		}
+		if (parts[0] === "uploads") {
+			return { view: "uploads" };
+		}
+		if (parts[0] === "vendors") {
+			return { view: "vendors" };
+		}
 		return { view: "daily" };
 	}
 
@@ -128,6 +145,9 @@
 		$("view-daily").classList.toggle("hidden", view !== "daily");
 		$("view-monthly").classList.toggle("hidden", view !== "monthly");
 		$("view-day").classList.toggle("hidden", view !== "day");
+		$("view-upload").classList.toggle("hidden", view !== "upload");
+		$("view-uploads").classList.toggle("hidden", view !== "uploads");
+		$("view-vendors").classList.toggle("hidden", view !== "vendors");
 	}
 
 	async function apiGet(path) {
@@ -176,6 +196,71 @@
 			body = null;
 		}
 		return { status: res.status, body: body };
+	}
+
+	async function apiSendJson(method, path, payload) {
+		var res;
+		try {
+			res = await fetch(path, {
+				method: method,
+				headers: { "Content-Type": "application/json", Accept: "application/json" },
+				body: JSON.stringify(payload)
+			});
+		} catch (e) {
+			var err = new Error("서버에 연결할 수 없습니다.");
+			err.kind = "network";
+			throw err;
+		}
+		var body = null;
+		try {
+			body = await res.json();
+		} catch (e) {
+			body = null;
+		}
+		return { status: res.status, body: body };
+	}
+
+	async function apiPostFile(path, formData) {
+		var res;
+		try {
+			res = await fetch(path, {
+				method: "POST",
+				headers: { Accept: "application/json" },
+				body: formData
+			});
+		} catch (e) {
+			var err = new Error("서버에 연결할 수 없습니다.");
+			err.kind = "network";
+			throw err;
+		}
+		var body = null;
+		try {
+			body = await res.json();
+		} catch (e) {
+			body = null;
+		}
+		return { status: res.status, body: body };
+	}
+
+	function fillErrorList(el, items, truncated) {
+		el.replaceChildren();
+		(items || []).forEach(function (item) {
+			var li = document.createElement("li");
+			li.textContent = window.ReconUploadClient.formatFieldError(item);
+			el.appendChild(li);
+		});
+		if (truncated) {
+			var more = document.createElement("li");
+			more.textContent = "오류가 더 있어 일부만 표시합니다.";
+			el.appendChild(more);
+		}
+	}
+
+	function noteOriginalsMayHaveChanged() {
+		reconEpoch += 1;
+		if (dayState) {
+			dayState.stale = true;
+		}
 	}
 
 	function monthValue() {
@@ -565,6 +650,370 @@
 		}
 	}
 
+	function selectedUploadKind() {
+		var checked = document.querySelector("input[name='upload-kind']:checked");
+		return checked ? checked.value : "";
+	}
+
+	function setVendorFormMode(editId, code) {
+		vendorEditId = editId;
+		var codeInput = $("vendor-code");
+		if (editId) {
+			text($("vendor-form-title"), "거래처 수정");
+			text($("btn-vendor-save"), "수정 저장");
+			codeInput.readOnly = true;
+			codeInput.value = code || codeInput.value;
+		} else {
+			text($("vendor-form-title"), "거래처 등록");
+			text($("btn-vendor-save"), "등록");
+			codeInput.readOnly = false;
+		}
+	}
+
+	function setVendorSaving(on) {
+		vendorSaving = on;
+		$("btn-vendor-save").disabled = on;
+		$("btn-vendor-cancel").disabled = on;
+		$("vendor-name").disabled = on;
+		$("vendor-settlement").disabled = on;
+		$("vendor-code").disabled = on;
+	}
+
+	async function loadVendors() {
+		var seq = ++loadSeq;
+		var banner = $("vendors-banner");
+		var tbody = $("vendors-body");
+		tbody.replaceChildren();
+		showBanner(banner, "loading", "불러오는 중…");
+		try {
+			var data = await apiGet("/api/v1/vendors?page=" + vendorPage + "&size=" + PAGE_SIZE);
+			if (seq !== loadSeq) {
+				return;
+			}
+			var rows = (data && data.content) ? data.content : [];
+			if (rows.length === 0) {
+				showBanner(banner, "empty", "등록된 거래처가 없습니다.");
+			} else {
+				hideBanner(banner);
+			}
+			rows.forEach(function (row) {
+				var tr = document.createElement("tr");
+				tr.className = "clickable";
+				if (vendorEditId === row.id) {
+					tr.classList.add("selected");
+				}
+				tr.tabIndex = 0;
+				tr.addEventListener("click", function () {
+					openVendorEdit(row);
+				});
+				tr.addEventListener("keydown", function (ev) {
+					if (ev.key === "Enter" || ev.key === " ") {
+						ev.preventDefault();
+						openVendorEdit(row);
+					}
+				});
+				tr.appendChild(td(row.vendorCode));
+				tr.appendChild(td(row.vendorName));
+				tr.appendChild(td(window.ReconVendorForms.settlementLabel(row.settlementType)));
+				tbody.appendChild(tr);
+			});
+			renderPager($("vendors-pager"), data.page, data.size, data.totalElements, function () {
+				vendorPage = Math.max(0, vendorPage - 1);
+				loadVendors();
+			}, function () {
+				vendorPage += 1;
+				loadVendors();
+			});
+		} catch (e) {
+			if (seq !== loadSeq) {
+				return;
+			}
+			showBanner(banner, "error", e.kind === "network" ? e.message : "조회에 실패했습니다. " + e.message);
+		}
+	}
+
+	function openVendorEdit(row) {
+		setVendorFormMode(row.id, row.vendorCode);
+		$("vendor-code").value = row.vendorCode;
+		$("vendor-name").value = row.vendorName;
+		$("vendor-settlement").value = row.settlementType;
+		fillErrorList($("vendor-errors"), [], false);
+		hideBanner($("vendors-banner"));
+		loadVendorDetail(row.id);
+		document.querySelectorAll("#vendors-body tr").forEach(function (tr) {
+			tr.classList.toggle("selected", tr.children[0] && tr.children[0].textContent === row.vendorCode);
+		});
+	}
+
+	async function loadVendorDetail(id) {
+		try {
+			var row = await apiGet("/api/v1/vendors/" + id);
+			if (vendorEditId !== id) {
+				return;
+			}
+			$("vendor-code").value = row.vendorCode;
+			$("vendor-name").value = row.vendorName;
+			$("vendor-settlement").value = row.settlementType;
+		} catch (e) {
+			showBanner($("vendors-banner"), "error", e.message);
+		}
+	}
+
+	function resetVendorCreate() {
+		setVendorFormMode(null, "");
+		$("vendor-code").value = "";
+		$("vendor-name").value = "";
+		$("vendor-settlement").value = "PREPAID";
+		fillErrorList($("vendor-errors"), [], false);
+		document.querySelectorAll("#vendors-body tr").forEach(function (tr) {
+			tr.classList.remove("selected");
+		});
+	}
+
+	async function saveVendor(ev) {
+		if (ev) {
+			ev.preventDefault();
+		}
+		if (vendorSaving) {
+			return;
+		}
+		var code = $("vendor-code").value;
+		var name = $("vendor-name").value;
+		var settlement = $("vendor-settlement").value;
+		var V = window.ReconVendorForms;
+		var conv = vendorEditId
+			? V.convenienceUpdateCheck(name, settlement)
+			: V.convenienceCreateCheck(code, name, settlement);
+		if (!conv.ok) {
+			showBanner($("vendors-banner"), "error", conv.message);
+			fillErrorList($("vendor-errors"), conv.fieldErrors, false);
+			return;
+		}
+		setVendorSaving(true);
+		showBanner($("vendors-banner"), "loading", "저장 중…");
+		fillErrorList($("vendor-errors"), [], false);
+		try {
+			var result;
+			if (vendorEditId) {
+				var updatePayload = V.buildUpdatePayload(name, settlement);
+				result = await apiSendJson("PUT", "/api/v1/vendors/" + vendorEditId, updatePayload);
+			} else {
+				var createPayload = V.buildCreatePayload(code, name, settlement);
+				result = await apiSendJson("POST", "/api/v1/vendors", createPayload);
+			}
+			$("vendor-code").value = code;
+			$("vendor-name").value = name;
+			$("vendor-settlement").value = settlement;
+			var interpreted = V.interpretVendorHttp(result.status, result.body);
+			if (!interpreted.ok) {
+				showBanner($("vendors-banner"), "error", interpreted.message);
+				fillErrorList($("vendor-errors"), interpreted.fieldErrors, false);
+				return;
+			}
+			fillErrorList($("vendor-errors"), [], false);
+			if (!vendorEditId && interpreted.vendor && interpreted.vendor.id) {
+				setVendorFormMode(interpreted.vendor.id, interpreted.vendor.vendorCode || code);
+			}
+			await loadVendors();
+			showBanner($("vendors-banner"), "ok", vendorEditId ? "수정했습니다." : "등록했습니다.");
+		} catch (e) {
+			$("vendor-code").value = code;
+			$("vendor-name").value = name;
+			$("vendor-settlement").value = settlement;
+			showBanner($("vendors-banner"), "error", e.message);
+		} finally {
+			setVendorSaving(false);
+			$("vendor-code").readOnly = !!vendorEditId;
+		}
+	}
+
+	function setUploading(on) {
+		uploading = on;
+		$("btn-upload").disabled = on;
+		$("upload-file").disabled = on;
+		document.querySelectorAll("input[name='upload-kind']").forEach(function (el) {
+			el.disabled = on;
+		});
+	}
+
+	function renderUploadResult(upload) {
+		var box = $("upload-result");
+		box.classList.remove("hidden");
+		box.replaceChildren();
+		function line(label, value) {
+			var p = document.createElement("p");
+			p.textContent = label + ": " + (value == null || value === "" ? "—" : String(value));
+			box.appendChild(p);
+		}
+		line("파일명", upload.originalFilename);
+		line("저장 행 수", upload.rowCount);
+		line("업로드 시각", formatInstant(upload.uploadedAt));
+		if (upload.uploadId != null) {
+			line("업로드 번호", upload.uploadId);
+		}
+	}
+
+	async function submitUpload(ev) {
+		if (ev) {
+			ev.preventDefault();
+		}
+		if (uploading) {
+			return;
+		}
+		var U = window.ReconUploadClient;
+		var kind = selectedUploadKind();
+		var fileInput = $("upload-file");
+		var file = fileInput.files && fileInput.files[0] ? fileInput.files[0] : null;
+		var conv = U.convenienceUploadCheck(kind, file);
+		if (!conv.ok) {
+			showBanner($("upload-banner"), "error", conv.message);
+			fillErrorList($("upload-errors"), conv.fieldErrors, false);
+			$("upload-result").classList.add("hidden");
+			return;
+		}
+		var sizeNote = U.convenienceSizeNote(file);
+		setUploading(true);
+		showBanner($("upload-banner"), "loading", "업로드 중…");
+		fillErrorList($("upload-errors"), [], false);
+		$("upload-result").classList.add("hidden");
+		try {
+			var formData = U.buildUploadFormData(file);
+			var path = U.uploadPath(kind);
+			var result = await apiPostFile(path, formData);
+			var interpreted = U.interpretUploadHttp(result.status, result.body);
+			if (interpreted.ok) {
+				noteOriginalsMayHaveChanged();
+				showBanner($("upload-banner"), "ok", "업로드했습니다. 이전에 본 집계·원본·검토는 다시 조회하세요.");
+				fillErrorList($("upload-errors"), [], false);
+				renderUploadResult(interpreted.upload || {});
+				uploadsPage = 0;
+				await loadUploads();
+				return;
+			}
+			var msg = interpreted.message;
+			if (interpreted.tooLarge) {
+				msg = interpreted.message + " " + interpreted.sizeHint;
+			}
+			if (sizeNote && interpreted.tooLarge) {
+				msg = interpreted.message + " " + interpreted.sizeHint;
+			}
+			if (interpreted.notSaved) {
+				msg = msg + " " + interpreted.notSaved;
+			}
+			showBanner($("upload-banner"), "error", msg);
+			fillErrorList($("upload-errors"), interpreted.fieldErrors, interpreted.truncated);
+		} catch (e) {
+			if (e.kind === "network") {
+				var unknown = U.interpretUploadNetworkError();
+				showBanner($("upload-banner"), "warn", unknown.message);
+				fillErrorList($("upload-errors"), [], false);
+			} else {
+				showBanner($("upload-banner"), "error", e.message + " " + U.notSavedMessage());
+			}
+		} finally {
+			setUploading(false);
+		}
+	}
+
+	function uploadsListPath() {
+		var q = "page=" + uploadsPage + "&size=" + PAGE_SIZE;
+		if (uploadsFilter === "BUSINESS" || uploadsFilter === "BANK") {
+			q += "&fileType=" + encodeURIComponent(uploadsFilter);
+		}
+		return "/api/v1/uploads?" + q;
+	}
+
+	function renderUploadDetail(row) {
+		var box = $("upload-detail");
+		box.classList.remove("hidden");
+		box.replaceChildren();
+		function line(label, value) {
+			var p = document.createElement("p");
+			p.textContent = label + ": " + (value == null || value === "" ? "—" : String(value));
+			box.appendChild(p);
+		}
+		line("업로드 번호", row.uploadId);
+		line("파일명", row.originalFilename);
+		line("유형", window.ReconUploadClient.fileTypeLabel(row.fileType));
+		line("행 수", row.rowCount);
+		line("업로드 시각", formatInstant(row.uploadedAt));
+	}
+
+	async function loadUploadDetail(id) {
+		selectedUploadId = id;
+		try {
+			var row = await apiGet("/api/v1/uploads/" + id);
+			if (selectedUploadId !== id) {
+				return;
+			}
+			renderUploadDetail(row);
+		} catch (e) {
+			showBanner($("uploads-banner"), "error", e.kind === "network" ? e.message : "상세 조회에 실패했습니다. " + e.message);
+		}
+	}
+
+	async function loadUploads() {
+		var seq = ++loadSeq;
+		var banner = $("uploads-banner");
+		var tbody = $("uploads-body");
+		tbody.replaceChildren();
+		$("upload-detail").classList.add("hidden");
+		showBanner(banner, "loading", "불러오는 중…");
+		document.querySelectorAll(".filter-btn").forEach(function (btn) {
+			btn.classList.toggle("active", (btn.getAttribute("data-upload-filter") || "") === uploadsFilter);
+		});
+		try {
+			var data = await apiGet(uploadsListPath());
+			if (seq !== loadSeq) {
+				return;
+			}
+			var rows = (data && data.content) ? data.content : [];
+			if (rows.length === 0) {
+				showBanner(banner, "empty", "조회된 업로드가 없습니다.");
+			} else {
+				hideBanner(banner);
+			}
+			rows.forEach(function (row) {
+				var tr = document.createElement("tr");
+				tr.className = "clickable";
+				tr.tabIndex = 0;
+				if (selectedUploadId === row.uploadId) {
+					tr.classList.add("selected");
+				}
+				tr.addEventListener("click", function () {
+					document.querySelectorAll("#uploads-body tr").forEach(function (el) {
+						el.classList.remove("selected");
+					});
+					tr.classList.add("selected");
+					loadUploadDetail(row.uploadId);
+				});
+				tr.addEventListener("keydown", function (ev) {
+					if (ev.key === "Enter" || ev.key === " ") {
+						ev.preventDefault();
+						tr.click();
+					}
+				});
+				tr.appendChild(td(row.originalFilename));
+				tr.appendChild(td(window.ReconUploadClient.fileTypeLabel(row.fileType)));
+				tr.appendChild(td(String(row.rowCount), "num"));
+				tr.appendChild(td(formatInstant(row.uploadedAt)));
+				tbody.appendChild(tr);
+			});
+			renderPager($("uploads-pager"), data.page, data.size, data.totalElements, function () {
+				uploadsPage = Math.max(0, uploadsPage - 1);
+				loadUploads();
+			}, function () {
+				uploadsPage += 1;
+				loadUploads();
+			});
+		} catch (e) {
+			if (seq !== loadSeq) {
+				return;
+			}
+			showBanner(banner, "error", e.kind === "network" ? e.message : "조회에 실패했습니다. " + e.message);
+		}
+	}
+
 	function route() {
 		var r = parseHash();
 		setNav(r.view);
@@ -579,6 +1028,17 @@
 				return;
 			}
 			loadDay(r.date);
+			return;
+		}
+		if (r.view === "upload") {
+			return;
+		}
+		if (r.view === "uploads") {
+			loadUploads();
+			return;
+		}
+		if (r.view === "vendors") {
+			loadVendors();
 			return;
 		}
 		loadDaily();
@@ -610,6 +1070,19 @@
 		$("btn-save").addEventListener("click", saveReview);
 		$("btn-back").addEventListener("click", function () {
 			location.hash = "#/daily";
+		});
+		$("vendor-form").addEventListener("submit", saveVendor);
+		$("btn-vendor-cancel").addEventListener("click", function () {
+			resetVendorCreate();
+		});
+		$("upload-form").addEventListener("submit", submitUpload);
+		document.querySelectorAll(".filter-btn").forEach(function (btn) {
+			btn.addEventListener("click", function () {
+				uploadsFilter = btn.getAttribute("data-upload-filter") || "";
+				uploadsPage = 0;
+				selectedUploadId = null;
+				loadUploads();
+			});
 		});
 		window.addEventListener("hashchange", route);
 		if (!location.hash) {

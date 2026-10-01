@@ -4,7 +4,7 @@
 	<meta charset="UTF-8">
 	<meta name="viewport" content="width=device-width, initial-scale=1">
 	<title>입출금 대사</title>
-	<link rel="stylesheet" href="css/app.css?v=3">
+	<link rel="stylesheet" href="css/app.css?v=4">
 </head>
 <body>
 	<header class="topbar">
@@ -12,6 +12,9 @@
 		<nav>
 			<a href="#/daily" data-view="daily">일별 조회</a>
 			<a href="#/monthly" data-view="monthly">월별 조회</a>
+			<a href="#/upload" data-view="upload">CSV 업로드</a>
+			<a href="#/uploads" data-view="uploads">업로드 이력</a>
+			<a href="#/vendors" data-view="vendors">거래처</a>
 		</nav>
 	</header>
 	<main>
@@ -156,8 +159,114 @@
 				</div>
 			</div>
 		</section>
+
+		<section id="view-upload" class="hidden">
+			<h2>CSV 업로드</h2>
+			<p class="hint">업무 CSV와 은행 CSV는 헤더와 저장 규칙이 다릅니다. 화면의 안내는 편의를 위한 것이고, 최종 결과는 서버 응답입니다.</p>
+			<div class="rules">
+				<div class="card">
+					<div class="k">업무 CSV</div>
+					<div class="v-text">
+						<p>경로 <code>POST /api/v1/uploads/business</code>, 필드 이름 <code>file</code>. UTF-8, 필수 헤더: <code>vendor_code</code>, <code>event_type</code>, <code>usage_date</code>, <code>expected_cash_date</code>, <code>amount</code>, <code>note</code>, <code>source_line_id</code>.</p>
+						<p>등록된 거래처 코드가 필요합니다. <code>event_type</code>은 <code>CHARGE_EXPECTED</code>, <code>SETTLEMENT_EXPECTED</code>, <code>REFUND_EXPECTED</code>, <code>USAGE</code>입니다. 날짜는 YYYY-MM-DD, 금액은 콤마 없는 원화 정수입니다. 본문 5MiB, 데이터 행 10,000개까지입니다.</p>
+					</div>
+				</div>
+				<div class="card">
+					<div class="k">은행 CSV</div>
+					<div class="v-text">
+						<p>경로 <code>POST /api/v1/uploads/bank</code>, 필드 이름 <code>file</code>. UTF-8, 필수 헤더: <code>booked_date</code>, <code>direction</code>, <code>amount</code>, <code>counterparty_name</code>, <code>description</code>, <code>source_line_id</code>.</p>
+						<p>거래처와 자동으로 연결하지 않습니다. <code>direction</code>은 <code>IN</code> 또는 <code>OUT</code>입니다. 날짜·금액 규칙은 업무 CSV와 같습니다. 본문 5MiB, 데이터 행 10,000개까지입니다.</p>
+					</div>
+				</div>
+			</div>
+			<form id="upload-form" class="stack-form" action="#" method="post">
+				<fieldset>
+					<legend>업로드할 유형</legend>
+					<label class="inline"><input type="radio" name="upload-kind" value="BUSINESS"> 업무 CSV</label>
+					<label class="inline"><input type="radio" name="upload-kind" value="BANK"> 은행 CSV</label>
+				</fieldset>
+				<label>CSV 파일
+					<input id="upload-file" type="file" accept=".csv,text/csv">
+				</label>
+				<div class="actions">
+					<button id="btn-upload" type="submit" class="primary">업로드</button>
+				</div>
+			</form>
+			<div id="upload-banner" class="banner hidden"></div>
+			<ul id="upload-errors" class="error-list"></ul>
+			<div id="upload-result" class="meta-box hidden"></div>
+		</section>
+
+		<section id="view-uploads" class="hidden">
+			<h2>업로드 이력</h2>
+			<p class="hint">성공 저장된 업로드만 보입니다. 원본 파일 다운로드와 삭제는 없습니다. 서버가 업로드 시각·번호 내림차순으로 정렬합니다.</p>
+			<div class="toolbar">
+				<div class="filter-bar" role="group" aria-label="업로드 유형 필터">
+					<button type="button" data-upload-filter="" class="filter-btn active">전체</button>
+					<button type="button" data-upload-filter="BUSINESS" class="filter-btn">BUSINESS</button>
+					<button type="button" data-upload-filter="BANK" class="filter-btn">BANK</button>
+				</div>
+			</div>
+			<div id="uploads-banner" class="banner hidden"></div>
+			<div class="table-wrap">
+				<table>
+					<thead>
+						<tr>
+							<th>파일명</th>
+							<th>유형</th>
+							<th>행 수</th>
+							<th>업로드 시각</th>
+						</tr>
+					</thead>
+					<tbody id="uploads-body"></tbody>
+				</table>
+			</div>
+			<div id="uploads-pager" class="pager"></div>
+			<div id="upload-detail" class="meta-box hidden"></div>
+		</section>
+
+		<section id="view-vendors" class="hidden">
+			<h2>거래처</h2>
+			<p class="hint">코드는 등록 후에 바꿀 수 없습니다. 삭제는 없습니다. 목록은 서버가 코드 오름차순으로 페이지 처리합니다.</p>
+			<div id="vendors-banner" class="banner hidden"></div>
+			<div class="table-wrap">
+				<table>
+					<thead>
+						<tr>
+							<th>코드</th>
+							<th>이름</th>
+							<th>선불/후불</th>
+						</tr>
+					</thead>
+					<tbody id="vendors-body"></tbody>
+				</table>
+			</div>
+			<div id="vendors-pager" class="pager"></div>
+			<form id="vendor-form" class="stack-form" action="#" method="post">
+				<h3 id="vendor-form-title">거래처 등록</h3>
+				<label>거래처 코드
+					<input id="vendor-code" name="vendorCode" maxlength="32" autocomplete="off" spellcheck="false">
+				</label>
+				<label>거래처 이름
+					<input id="vendor-name" name="vendorName" maxlength="100" autocomplete="off">
+				</label>
+				<label>정산 방식
+					<select id="vendor-settlement" name="settlementType">
+						<option value="PREPAID">선불 (PREPAID)</option>
+						<option value="POSTPAID">후불 (POSTPAID)</option>
+					</select>
+				</label>
+				<ul id="vendor-errors" class="error-list"></ul>
+				<div class="actions">
+					<button id="btn-vendor-save" type="submit" class="primary">등록</button>
+					<button id="btn-vendor-cancel" type="button">등록으로 돌아가기</button>
+				</div>
+			</form>
+		</section>
 	</main>
-	<script src="js/review-save.js?v=3"></script>
-	<script src="js/app.js?v=3"></script>
+	<script src="js/review-save.js?v=4"></script>
+	<script src="js/vendor-forms.js?v=4"></script>
+	<script src="js/upload-client.js?v=4"></script>
+	<script src="js/app.js?v=4"></script>
 </body>
 </html>

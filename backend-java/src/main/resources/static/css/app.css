@@ -37,6 +37,7 @@ a { color: var(--accent); }
 	padding: 12px 20px;
 	display: flex;
 	align-items: center;
+	flex-wrap: wrap;
 	gap: 20px;
 }
 
@@ -46,7 +47,7 @@ a { color: var(--accent); }
 	font-weight: 700;
 }
 
-nav { display: flex; gap: 8px; }
+nav { display: flex; flex-wrap: wrap; gap: 8px; }
 
 nav a {
 	text-decoration: none;
@@ -230,8 +231,81 @@ tbody tr.clickable:hover { background: #f3f7fb; }
 	max-width: 640px;
 }
 
-.actions { display: flex; gap: 8px; margin-top: 10px; }
+.actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
 
 .hidden { display: none; }
 
 .break { word-break: break-all; }
+
+.stack-form {
+	background: var(--surface);
+	border: 1px solid var(--line);
+	border-radius: var(--radius);
+	padding: 14px;
+	max-width: 640px;
+	display: flex;
+	flex-direction: column;
+	gap: 10px;
+	margin-top: 16px;
+}
+
+.stack-form h3 { margin: 0; font-size: 15px; }
+
+.stack-form fieldset {
+	border: 1px solid var(--line);
+	border-radius: var(--radius);
+	padding: 8px 10px;
+	margin: 0;
+}
+
+.inline { display: inline-flex; flex-direction: row; align-items: center; gap: 6px; margin-right: 12px; }
+
+.rules {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 12px;
+	margin-bottom: 16px;
+}
+
+.rules .card { flex: 1 1 280px; }
+
+.v-text { font-size: 13px; font-weight: 400; margin-top: 6px; }
+.v-text p { margin: 0 0 8px; }
+.v-text p:last-child { margin-bottom: 0; }
+code { font-size: 12px; }
+
+.error-list {
+	margin: 0;
+	padding-left: 18px;
+	color: var(--diff-text);
+}
+
+.error-list:empty { display: none; }
+
+.filter-bar { display: flex; flex-wrap: wrap; gap: 6px; }
+
+.filter-btn.active {
+	background: var(--info-bg);
+	border-color: var(--accent);
+	color: var(--accent);
+	font-weight: 600;
+}
+
+tbody tr.selected { background: #eaf1f8; }
+
+.meta-box {
+	margin-top: 14px;
+	background: var(--surface);
+	border: 1px solid var(--line);
+	border-radius: var(--radius);
+	padding: 12px 14px;
+	max-width: 640px;
+}
+
+.meta-box p { margin: 0 0 6px; }
+.meta-box p:last-child { margin-bottom: 0; }
+
+input[readonly] {
+	background: #f7f8fa;
+	color: var(--muted);
+}

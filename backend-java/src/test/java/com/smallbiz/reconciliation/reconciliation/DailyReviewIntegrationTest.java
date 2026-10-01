@@ -19,6 +19,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
@@ -386,7 +387,10 @@ class DailyReviewIntegrationTest {
 				2026-09-28,IN,10,,검토잠금,BANK-REV-B-1
 				""");
 		long version = versionOf(getReview("2026-09-28"));
-		CountDownLatch locked = new CountDownLatch(1);
+		AtomicInteger reviewPid = new AtomicInteger();
+		AtomicInteger uploadPid = new AtomicInteger();
+		CountDownLatch reviewReady = new CountDownLatch(1);
+		CountDownLatch uploadPidReady = new CountDownLatch(1);
 		CountDownLatch release = new CountDownLatch(1);
 		TransactionTemplate tx = new TransactionTemplate(transactionManager);
 		ExecutorService pool = Executors.newFixedThreadPool(2);
@@ -397,7 +401,8 @@ class DailyReviewIntegrationTest {
 							LocalDate.parse("2026-09-28"),
 							new DailyReviewUpdateRequest(ReviewStatus.REVIEWED, "검토먼저", version)
 					);
-					locked.countDown();
+					reviewPid.set(backendPid());
+					reviewReady.countDown();
 					if (!release.await(10, TimeUnit.SECONDS)) {
 						throw new IllegalStateException("release timeout");
 					}
@@ -407,32 +412,39 @@ class DailyReviewIntegrationTest {
 					throw new IllegalStateException(ex);
 				}
 			}));
-			assertThat(locked.await(5, TimeUnit.SECONDS)).isTrue();
-			Future<?> upload = pool.submit(() -> bankUploadService.save(
-					"after-review.csv",
-					sha256("""
-							booked_date,direction,amount,counterparty_name,description,source_line_id
-							2026-09-28,IN,3,,검토후,BANK-REV-B-2
-							"""),
-					List.of(new ParsedBankRow(
-							2,
-							LocalDate.parse("2026-09-28"),
-							BankDirection.IN,
-							3,
-							null,
-							"검토후",
-							"BANK-REV-B-2"
-					))
-			));
-			boolean finishedWhileLocked;
+			assertThat(reviewReady.await(5, TimeUnit.SECONDS)).isTrue();
+			Future<?> upload = pool.submit(() -> tx.executeWithoutResult(status -> {
+				uploadPid.set(backendPid());
+				uploadPidReady.countDown();
+				bankUploadService.save(
+						"after-review.csv",
+						sha256("""
+								booked_date,direction,amount,counterparty_name,description,source_line_id
+								2026-09-28,IN,3,,검토후,BANK-REV-B-2
+								"""),
+						List.of(new ParsedBankRow(
+								2,
+								LocalDate.parse("2026-09-28"),
+								BankDirection.IN,
+								3,
+								null,
+								"검토후",
+								"BANK-REV-B-2"
+						))
+				);
+			}));
+			assertThat(uploadPidReady.await(5, TimeUnit.SECONDS)).isTrue();
+			assertThat(reviewPid.get()).isNotEqualTo(uploadPid.get());
+			assertThat(awaitReviewPidBlocksUploadPid(reviewPid.get(), uploadPid.get(), 5, TimeUnit.SECONDS)).isTrue();
+			boolean finishedWhileBlocked;
 			try {
 				upload.get(400, TimeUnit.MILLISECONDS);
-				finishedWhileLocked = true;
+				finishedWhileBlocked = true;
 			}
 			catch (TimeoutException ex) {
-				finishedWhileLocked = false;
+				finishedWhileBlocked = false;
 			}
-			assertThat(finishedWhileLocked).isFalse();
+			assertThat(finishedWhileBlocked).isFalse();
 			release.countDown();
 			holder.get(10, TimeUnit.SECONDS);
 			MvcResult afterReview = getReview("2026-09-28");
@@ -522,6 +534,38 @@ class DailyReviewIntegrationTest {
 			end++;
 		}
 		return body.substring(valueStart, end);
+	}
+
+	private int backendPid() {
+		Integer pid = jdbcTemplate.queryForObject("SELECT pg_backend_pid()", Integer.class);
+		if (pid == null) {
+			throw new IllegalStateException("pg_backend_pid() returned null");
+		}
+		return pid;
+	}
+
+	private boolean awaitReviewPidBlocksUploadPid(
+			int reviewBackendPid,
+			int uploadBackendPid,
+			long timeout,
+			TimeUnit unit
+	) throws InterruptedException {
+		long deadline = System.nanoTime() + unit.toNanos(timeout);
+		while (System.nanoTime() < deadline) {
+			Boolean blockedByReview = jdbcTemplate.queryForObject(
+					"""
+							SELECT CAST(? AS integer) = ANY (pg_blocking_pids(CAST(? AS integer)))
+							""",
+					Boolean.class,
+					reviewBackendPid,
+					uploadBackendPid
+			);
+			if (Boolean.TRUE.equals(blockedByReview)) {
+				return true;
+			}
+			Thread.sleep(20);
+		}
+		return false;
 	}
 
 	private Instant lastReviewedAt(MvcResult result) throws Exception {

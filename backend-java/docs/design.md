@@ -6,8 +6,8 @@ Java 백엔드 MVP 설계다. 인증 없는 로컬 개발용이며 가상 거래
 
 ## 현재 구현 / 후속 구현
 
-- 구현됨: 애플리케이션 기동, `GET /health`, 거래처, 업무·은행 CSV 업로드, **일별·월별 집계 조회**.
-- 후속: 원본 조회, 검토 상태.
+- 구현됨: 애플리케이션 기동, `GET /health`, 거래처, 업무·은행 CSV 업로드, 일별·월별 집계, **날짜별 원본·업로드 이력 조회**.
+- 후속: 검토 상태.
 
 원본 CSV 바이트는 보관하지 않는다. 업로드 메타데이터와 정규화된 행만 저장하므로 원본 파일 재다운로드는 제공하지 않는다.
 
@@ -145,6 +145,14 @@ CHARGE_EXPECTED는 PREPAID, SETTLEMENT_EXPECTED는 POSTPAID만. REFUND_EXPECTED�
 
 월 합계 차이가 0이어도 날짜별 차이는 남을 수 있으므로 `differenceDayCount`를 따로 둔다.
 
+## 날짜별 원본·업로드 이력
+
+`GET /api/v1/reconciliations/daily/{date}/business`, `.../bank`: 집계와 같은 날짜·유형. 업무는 `CHARGE_EXPECTED`·`SETTLEMENT_EXPECTED`·`REFUND_EXPECTED`만. `USAGE` 제외. 은행은 해당 `booked_date` 전체. 거래처 자동 연결 없음. 응답은 DTO. 정렬 `source_row_number`, `id`. 빈 날짜는 200·빈 목록.
+
+`GET /api/v1/uploads`, `GET /api/v1/uploads/{uploadId}`: 성공 저장된 이력만. 파일 바이트와 원본 행 전체는 반환하지 않는다.
+
+기존 `GET /reconciliations/daily?from=&to=` 및 `POST /uploads/business|bank`와 경로가 겹치지 않는다. `GET /uploads/{uploadId}`의 `uploadId`는 숫자다.
+
 ## 검토 상태 (후속)
 
 금액 합계 상태와 사람 검토 상태는 분리한다.
@@ -202,16 +210,17 @@ CHARGE_EXPECTED는 PREPAID, SETTLEMENT_EXPECTED는 POSTPAID만. REFUND_EXPECTED�
 - `POST /api/v1/uploads/bank` 201 (multipart `file`)
 - `GET /api/v1/reconciliations/daily?from=&to=` 200
 - `GET /api/v1/reconciliations/monthly?yearMonth=` 200
+- `GET /api/v1/reconciliations/daily/{date}/business` 200
+- `GET /api/v1/reconciliations/daily/{date}/bank` 200
+- `GET /api/v1/uploads` 200, `fileType` 선택, page 기본 0, size 기본 20, 최대 100, `uploadedAt`·`id` 내림차순
+- `GET /api/v1/uploads/{uploadId}` 200
 
 후속:
 
-- `GET /uploads`, `GET /uploads/{id}`
-- `GET /reconciliations/daily/{date}/business-events`
-- `GET /reconciliations/daily/{date}/bank-transactions`
 - `GET /vendors/{id}/business-events`
 - `PUT /reconciliations/daily/{date}/review`
 
-공통 오류: `code`, `message`, 필요 시 `fieldErrors`. 400 입력, 404 없음, 409 거래처 코드·동일 파일 해시·`source_line_id` 중복, 413 파일 크기. DB 원문·스택은 응답에 넣지 않는다. UNIQUE가 아닌 무결성 오류를 중복으로 매핑하지 않는다.
+공통 오류: `code`, `message`, 필요 시 `fieldErrors`. 400 입력, 404 없음(`VENDOR_NOT_FOUND`, `UPLOAD_NOT_FOUND`), 409 거래처 코드·동일 파일 해시·`source_line_id` 중복, 413 파일 크기. DB 원문·스택은 응답에 넣지 않는다. UNIQUE가 아닌 무결성 오류를 중복으로 매핑하지 않는다.
 
 ## 미해결
 

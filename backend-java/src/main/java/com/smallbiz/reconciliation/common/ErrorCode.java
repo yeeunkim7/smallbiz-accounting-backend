@@ -3,6 +3,7 @@ package com.smallbiz.reconciliation.common;
 public enum ErrorCode {
 	INVALID_INPUT,
 	VENDOR_NOT_FOUND,
+	UPLOAD_NOT_FOUND,
 	DUPLICATE_VENDOR_CODE,
 	DUPLICATE_UPLOAD_FILE,
 	DUPLICATE_SOURCE_LINE_ID,

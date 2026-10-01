@@ -8,9 +8,7 @@
 
 ## 진행 상태
 
-원격 `main`에 있는 기능: 헬스, 거래처, 업무·은행 CSV 업로드, 일별·월별 집계 (Flyway V1–V5).
-
-로컬에서 이어서 구현 중(미커밋): 날짜별 원본 조회, 업로드 이력 조회.
+원격 `main`에 있는 기능: 헬스, 거래처, 업무·은행 CSV 업로드, 일별·월별 집계, 날짜별 원본 조회, 업로드 이력 조회 (Flyway V1–V5).
 
 후속: 검토 상태·메모. 화면은 아직 없다.
 
@@ -34,12 +32,9 @@ preview/snapshot은 사용하지 않는다.
 - 업무 CSV 업로드 (`POST /api/v1/uploads/business`)
 - 은행 CSV 업로드 (`POST /api/v1/uploads/bank`)
 - 일별·월별 집계 (`GET /api/v1/reconciliations/daily`, `.../monthly`)
-- Flyway V1–V5 (V5는 조회 날짜 인덱스)
-
-로컬 구현 중(미커밋):
-
 - 날짜별 업무·은행 원본 (`GET /api/v1/reconciliations/daily/{date}/business`, `.../bank`)
 - 업로드 이력 (`GET /api/v1/uploads`, `GET /api/v1/uploads/{uploadId}`)
+- Flyway V1–V5 (V5는 조회 날짜 인덱스)
 
 ## 후속 예정 (미구현)
 

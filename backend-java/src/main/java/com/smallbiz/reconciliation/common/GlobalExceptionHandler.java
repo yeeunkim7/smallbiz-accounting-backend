@@ -25,6 +25,7 @@ import com.smallbiz.reconciliation.reconciliation.InvalidReconciliationQueryExce
 import com.smallbiz.reconciliation.upload.DuplicateSourceLineIdException;
 import com.smallbiz.reconciliation.upload.DuplicateUploadFileException;
 import com.smallbiz.reconciliation.upload.PayloadTooLargeException;
+import com.smallbiz.reconciliation.upload.UploadFileNotFoundException;
 import com.smallbiz.reconciliation.upload.UploadValidationException;
 import com.smallbiz.reconciliation.vendor.DuplicateVendorCodeException;
 import com.smallbiz.reconciliation.vendor.VendorNotFoundException;
@@ -84,6 +85,12 @@ public class GlobalExceptionHandler {
 	public ResponseEntity<ErrorResponse> handleVendorNotFound(VendorNotFoundException ex) {
 		return ResponseEntity.status(HttpStatus.NOT_FOUND)
 				.body(ErrorResponse.of(ErrorCode.VENDOR_NOT_FOUND, ex.getMessage()));
+	}
+
+	@ExceptionHandler(UploadFileNotFoundException.class)
+	public ResponseEntity<ErrorResponse> handleUploadFileNotFound(UploadFileNotFoundException ex) {
+		return ResponseEntity.status(HttpStatus.NOT_FOUND)
+				.body(ErrorResponse.of(ErrorCode.UPLOAD_NOT_FOUND, ex.getMessage()));
 	}
 
 	@ExceptionHandler(UploadValidationException.class)

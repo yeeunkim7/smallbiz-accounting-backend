@@ -29,7 +29,7 @@ PostgreSQL은 이 앱 전용으로 **개발 DB**와 **테스트 DB**를 따로 �
 
 ## 진행 상태
 
-원격 `main` (`5ce70aa`까지)에 있는 것:
+원격 `main`에 있는 것:
 
 | 구분 | API |
 | --- | --- |
@@ -37,21 +37,16 @@ PostgreSQL은 이 앱 전용으로 **개발 DB**와 **테스트 DB**를 따로 �
 | 거래처 | `POST/GET/PUT /api/v1/vendors` |
 | 업로드 | `POST /api/v1/uploads/business`, `POST /api/v1/uploads/bank` |
 | 집계 | `GET /api/v1/reconciliations/daily`, `GET /api/v1/reconciliations/monthly` |
+| 원본 | `GET /api/v1/reconciliations/daily/{date}/business`, `.../bank` |
+| 이력 | `GET /api/v1/uploads`, `GET /api/v1/uploads/{uploadId}` |
 
-Flyway V1–V5. 통합 테스트 26개는 테스트 DB에서 통과한 기록이 있습니다.
-
-로컬에서 구현 중(아직 커밋하지 않음):
-
-- `GET /api/v1/reconciliations/daily/{date}/business`
-- `GET /api/v1/reconciliations/daily/{date}/bank`
-- `GET /api/v1/uploads`, `GET /api/v1/uploads/{uploadId}`
+Flyway V1–V5. 통합 테스트 33개는 테스트 DB에서 통과한 기록이 있습니다.
 
 남은 MVP:
 
-1. 위 원본·이력 조회 테스트·커밋
-2. 날짜별 검토 상태·메모 (`PUT .../daily/{date}/review`)
-3. (선택) 거래처별 업무 원본
-4. 화면
+1. 날짜별 검토 상태·메모 (`PUT .../daily/{date}/review`)
+2. (선택) 거래처별 업무 원본
+3. 화면
 
 인증, 실제 은행 연동, 거래처별 대사, 실패 업로드 이력 저장은 MVP 밖입니다.
 

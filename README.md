@@ -1,198 +1,147 @@
 # smallbiz-accounting-backend
 
-소규모 사업자 **입출금·정산 대사** 백엔드입니다.
+소규모 사업자의 **현금 예정 내역**과 **은행 거래 내역**을 일별·월별로 비교하고, 차이를 사람이 검토하는 입출금 대사 시스템입니다.
 
-업무 CSV의 입금·출금 예정과 은행 CSV의 실제 거래를 날짜 기준으로 비교합니다. 인증 없는 로컬 MVP이며 가상 거래처·합성 데이터만 사용합니다.
+현재 실행·검증의 중심은 Java Spring Boot 앱 [`backend-java/`](backend-java/README.md)입니다. 집계 규칙과 테이블 정의는 [`backend-java/docs/design.md`](backend-java/docs/design.md)에 있습니다. 화면은 아직 없고, 백엔드 API 단계입니다.
 
-**지금 실행하는 앱은 [`backend-java/`](backend-java/README.md)입니다.** 설계는 [`backend-java/docs/design.md`](backend-java/docs/design.md)를 봅니다.
+## 개발 배경
 
-## 무엇을 하는가
+업무 쪽 입금·출금 예정과 통장 실제 거래를 Excel에서 날짜별로 맞춰 보던 흐름을 API로 옮겼습니다. CSV를 올리면 원본을 저장하고, 날짜 합계와 차이를 조회하고, 합계에 들어간 행과 업로드 이력을 추적한 뒤, 날짜 단위로 검토 상태와 메모를 남깁니다.
 
-- 단일 회사, 단일 계좌, 원화
-- 거래처별 대사는 하지 않음
-- 입금과 출금을 상계하지 않음
-- 합계 일치(`TOTAL_EQUAL`)는 거래별 매칭이나 사람 검토 완료가 아님
-- 원본 CSV 파일은 보관하지 않음. 재다운로드 API 없음
+합계가 같다고 해서 거래가 하나씩 맞았거나 검토가 끝난 것은 아닙니다. 인증, 실제 은행 연동, 거래 자동 매칭은 구현하지 않았습니다.
 
-루트의 Python FastAPI(`app/`)와 SQLite(`accounting.db`)는 **이전 전표 실험**입니다. 삭제하거나 Java로 대체하지 않습니다. DB와 프로세스도 분리합니다.
+## 핵심 기능
 
-## 구성
+구현된 기능만 적습니다.
 
-| 경로 | 역할 |
-| --- | --- |
-| `backend-java/` | Spring Boot 대사 API (Java 21, Boot 4.1.1, PostgreSQL, Flyway) |
-| `backend-java/docs/design.md` | 집계 규칙, 테이블, API |
-| `app/`, `migrations/`, `accounting.db` | Python 전표 실험. Java가 스키마를 변경하지 않음 |
-| `_spring_init/`, `backend-java-init.zip` | Spring 초기 생성물. 저장소에 올리지 않음 |
+- **거래처 관리** — 코드, 이름, 선불·후불 정산 유형 등록·조회·수정. 코드는 생성 후 바꾸지 않습니다.
+- **업무·은행 CSV 업로드** — 예정 현금(충전·정산·환불)과 이용(`USAGE`), 은행 입출금을 정규화해 저장합니다. 원본 CSV 바이트는 보관하지 않습니다.
+- **일별·월별 비교** — 예정 입금/출금과 실제 입금/출금을 각각 비교합니다. 입금과 출금을 상계하지 않습니다.
+- **원본·업로드 이력** — 집계에 쓰인 날짜의 업무·은행 행과, 성공 저장된 업로드 메타데이터를 조회합니다.
+- **검토** — 날짜별 미검토·검토 완료·재확인, 메모, 낙관적 버전. 검토 완료 후 해당 날짜에 원본이 추가되면 재확인으로 바뀝니다.
 
-PostgreSQL은 이 앱 전용으로 **개발 DB**와 **테스트 DB**를 따로 둡니다. 테스트는 `reconciliation_dev`를 거부합니다. 비밀번호는 저장소에 적지 않습니다.
+가상 거래처와 합성 CSV만 가정합니다. 단일 회사, 단일 계좌, 원화 정수입니다.
 
-## 진행 상태
+## 기술 스택과 구조
 
-원격 `main`에 있는 것:
+| 구성 | 버전 | 역할 |
+| --- | --- | --- |
+| Java | 21 | 애플리케이션 런타임 (`backend-java/build.gradle`) |
+| Spring Boot | 4.1.1 | Web MVC, Validation, 트랜잭션 |
+| Spring Data JPA | Boot BOM | 거래처·업로드 원본·검토 행의 영속화. `ddl-auto: validate` |
+| Flyway | Boot 스타터 | PostgreSQL 스키마 V1–V6 |
+| PostgreSQL | JDBC 드라이버 | 개발·테스트 전용 DB. H2는 쓰지 않음 |
+| Apache Commons CSV | 1.14.0 | 따옴표·필드 안 쉼표가 있는 CSV 파싱 |
+| Gradle Wrapper | 9.7.1 | 빌드·테스트·기동 |
 
-| 구분 | API |
-| --- | --- |
-| 기동 | `GET /health` |
-| 거래처 | `POST/GET/PUT /api/v1/vendors` |
-| 업로드 | `POST /api/v1/uploads/business`, `POST /api/v1/uploads/bank` |
-| 집계 | `GET /api/v1/reconciliations/daily`, `GET /api/v1/reconciliations/monthly` |
-| 원본 | `GET /api/v1/reconciliations/daily/{date}/business`, `.../bank` |
-| 이력 | `GET /api/v1/uploads`, `GET /api/v1/uploads/{uploadId}` |
+핵심 패키지 (`com.smallbiz.reconciliation`):
 
-Flyway V1–V5는 원격에 있다. 검토 상태(V6)는 로컬 구현이다.
+```text
+backend-java/src/main/java/com/smallbiz/reconciliation/
+  health/           기동 확인
+  vendor/           거래처 API
+  upload/           CSV 파싱·저장, 업로드 이력
+  reconciliation/   일별·월별 집계, 원본 조회, 검토
+  common/           오류 응답
+```
 
-남은 MVP:
-
-1. 검토 기능 테스트·커밋
-2. (선택) 거래처별 업무 원본
-3. 화면
-
-인증, 실제 은행 연동, 거래처별 대사, 실패 업로드 이력 저장은 MVP 밖입니다.
-
-## 실행
-
-자세한 명령·CSV 예·curl은 [`backend-java/README.md`](backend-java/README.md)를 따릅니다.
-
-요약: JDK 21, `DB_URL` / `DB_USERNAME` / `DB_PASSWORD`로 `reconciliation_dev`에 연결한 뒤 `backend-java`에서 `.\gradlew.bat bootRun`입니다. 로컬에서 8080이 쓰이면 `--server.port=8081`을 씁니다. 테스트는 `TEST_DB_*`로 `reconciliation_test`만 가리킵니다.
-
-## 이전 전표 실험 (Python)
-
-아래 ERD는 FastAPI 전표 모델입니다. 현재 Java 대사 스키마(`vendor`, `upload_file`, `business_event`, `bank_transaction`)와 다릅니다.
+현재 Java 스키마(Flyway V1–V6)는 아래와 같습니다. `daily_review`는 날짜 기본 키만 있으며 다른 테이블과 외래 키가 없습니다.
 
 ```mermaid
 erDiagram
+  vendor ||--o{ business_event : "vendor_id"
+  upload_file ||--o{ business_event : "upload_file_id"
+  upload_file ||--o{ bank_transaction : "upload_file_id"
 
-  USER ||--o{ ACCOUNT_SUBJECT : has
-  USER ||--o{ VENDOR : owns
-  USER ||--o{ EXPENSE : owns
-  USER ||--o{ SALE : owns
-  USER ||--o{ PURCHASE : owns
-  USER ||--o{ JOURNAL_ENTRY : owns
-  USER ||--o{ EVIDENCE : uploads
-  USER ||--o{ VAT_SUMMARY : has
-
-  EXPENSE ||--o| JOURNAL_ENTRY : generates
-  SALE ||--o| JOURNAL_ENTRY : generates
-  PURCHASE ||--o| JOURNAL_ENTRY : generates
-
-  JOURNAL_ENTRY ||--o{ JOURNAL_LINE : contains
-  ACCOUNT_SUBJECT ||--o{ JOURNAL_LINE : used_in
-
-  EXPENSE ||--o{ EXPENSE_EVIDENCE : attaches
-  EVIDENCE ||--o{ EXPENSE_EVIDENCE : attached_to
-
-  SALE ||--o{ SALE_EVIDENCE : attaches
-  EVIDENCE ||--o{ SALE_EVIDENCE : attached_to
-
-  PURCHASE ||--o{ PURCHASE_EVIDENCE : attaches
-  EVIDENCE ||--o{ PURCHASE_EVIDENCE : attached_to
-
-  USER {
+  vendor {
     bigint id PK
-    varchar email UK
-    varchar name
-    timestamp created_at
+    varchar vendor_code UK
+    varchar vendor_name
+    varchar settlement_type
+    timestamptz created_at
+    timestamptz updated_at
   }
-
-  VENDOR {
+  upload_file {
     bigint id PK
-    bigint user_id FK
-    varchar name
-    varchar business_no
-    timestamp created_at
+    varchar file_type
+    varchar original_filename
+    varchar content_sha256 UK
+    int row_count
+    timestamptz uploaded_at
   }
-
-  ACCOUNT_SUBJECT {
+  business_event {
     bigint id PK
-    bigint user_id FK
-    varchar code
-    varchar name
-    enum type
-    boolean is_active
-    timestamp created_at
-  }
-
-  EXPENSE {
-    bigint id PK
-    bigint user_id FK
-    date transaction_date
     bigint vendor_id FK
-    bigint account_subject_id FK
-    decimal net_amount
-    decimal vat_amount
-    decimal gross_amount
-    enum status
-    bigint journal_entry_id FK
-    timestamp created_at
-    timestamp confirmed_at
+    bigint upload_file_id FK
+    varchar source_line_id UK
+    int source_row_number
+    varchar event_type
+    date usage_date
+    date expected_cash_date
+    bigint amount
+    varchar note
   }
-
-  SALE {
+  bank_transaction {
     bigint id PK
-    bigint user_id FK
-    date transaction_date
-    bigint vendor_id FK
-    decimal net_amount
-    decimal vat_amount
-    decimal gross_amount
-    enum status
-    bigint journal_entry_id FK
-    timestamp created_at
-    timestamp confirmed_at
+    bigint upload_file_id FK
+    varchar source_line_id UK
+    int source_row_number
+    date booked_date
+    varchar direction
+    bigint amount
+    varchar counterparty_name
+    varchar description
   }
-
-  PURCHASE {
-    bigint id PK
-    bigint user_id FK
-    date transaction_date
-    bigint vendor_id FK
-    decimal net_amount
-    decimal vat_amount
-    decimal gross_amount
-    enum status
-    bigint journal_entry_id FK
-    timestamp created_at
-    timestamp confirmed_at
-  }
-
-  JOURNAL_ENTRY {
-    bigint id PK
-    bigint user_id FK
-    date entry_date
-    enum status
-    enum source_type
-    bigint source_id
-    timestamp created_at
-    timestamp posted_at
-  }
-
-  JOURNAL_LINE {
-    bigint id PK
-    bigint journal_entry_id FK
-    bigint account_subject_id FK
-    enum direction
-    decimal amount
-    int line_order
-  }
-
-  EVIDENCE {
-    bigint id PK
-    bigint user_id FK
-    enum type
-    date issued_at
-    bigint vendor_id FK
-    varchar file_uri
-    timestamp uploaded_at
-  }
-
-  VAT_SUMMARY {
-    bigint id PK
-    bigint user_id FK
-    varchar year_month
-    decimal output_vat
-    decimal input_vat
-    decimal net_vat
-    timestamp calculated_at
+  daily_review {
+    date review_date PK
+    varchar status
+    varchar memo
+    timestamptz last_reviewed_at
+    timestamptz updated_at
+    bigint version
   }
 ```
+
+## 핵심 설계
+
+**파싱과 저장을 나눕니다.** 잘못된 CSV를 DB 트랜잭션 안에서 읽으면 연결을 오래 잡고 실패 이력이 남을 수 있습니다. Facade가 파일을 읽고 검증한 뒤, Service만 `@Transactional`로 저장합니다. 파서가 거절하면 테이블에 이번 요청 행이 생기지 않습니다.
+
+**같은 파일·같은 원천 ID는 요청 전체를 거절합니다.** 일부 행만 넣으면 합계가 원본과 어긋납니다. 내용 SHA-256과 테이블별 `source_line_id` 유일 제약으로 막고, 검증 실패 시 추가하려던 업로드·원본을 롤백합니다.
+
+**업무와 은행을 각각 날짜별로 합친 뒤 붙입니다.** 같은 날짜의 원본 행을 바로 JOIN하면 행 수끼리 곱해져 금액이 커집니다. CTE로 쪽마다 `GROUP BY`한 다음 날짜 UNION으로 결합합니다.
+
+**입금과 출금을 따로 보고, 월 합계와 일별 차이를 구분합니다.** 충전·정산 예정은 은행 입금과, 환불 예정은 은행 출금과 비교합니다. 월 합계 차이가 0이어도 날짜별로 어긋난 날이 있을 수 있어 `differenceDayCount`를 둡니다.
+
+**검토는 원본 버전과 날짜 잠금으로 지킵니다.** 화면의 오래된 저장이 나중에 올라온 원본을 덮어쓰면 안 됩니다. 성공 업로드와 검토 저장이 같은 날짜 행을 잠그고 버전을 올리며, 버전이 다르면 409로 거절합니다. `USAGE`만 있는 날은 현금 대사 대상이 아니어서 검토를 저장하지 않습니다.
+
+## 실행·API·검증
+
+기동, 환경 변수, 합성 CSV, curl 예는 [`backend-java/README.md`](backend-java/README.md)를 따릅니다.
+
+| 기능 | 경로 |
+| --- | --- |
+| 기동 확인 | `GET /health` |
+| 거래처 | `POST/GET/PUT /api/v1/vendors` |
+| CSV 업로드 | `POST /api/v1/uploads/business`, `POST /api/v1/uploads/bank` |
+| 업로드 이력 | `GET /api/v1/uploads`, `GET /api/v1/uploads/{uploadId}` |
+| 일별·월별 집계 | `GET /api/v1/reconciliations/daily`, `GET /api/v1/reconciliations/monthly` |
+| 날짜별 원본 | `GET /api/v1/reconciliations/daily/{date}/business`, `.../bank` |
+| 검토 | `GET/PUT /api/v1/reconciliations/daily/{date}/review` |
+
+통합 테스트는 PostgreSQL 테스트 DB에서 돌립니다. Gradle HTML 보고서(`backend-java/build/reports/tests/test/index.html`) **2026-10-01 11:38:22 실행** 기준, 실행 42 · 성공 42 · 실패 0 · 건너뜀 0입니다.
+
+## 현재 범위와 다음 계획
+
+**지금:** 거래처, 업무·은행 CSV, 일별·월별 합계 비교, 원본·이력 조회, 날짜별 검토·재확인. 인증 없는 로컬 MVP입니다.
+
+**예정:** 조회·업로드·검토를 쓰는 화면. 거래처별 업무 원본 목록은 설계에만 있고 API는 없습니다.
+
+**하지 않는 것:** 은행 Open API, 거래 단위 자동 매칭, 원본 CSV 재다운로드, 실패 업로드 이력 저장, 거래처별 은행 대사 확정.
+
+## 저장소의 Python 앱
+
+[`app/`](app/)은 FastAPI 전표 실험입니다. 거래처·계정과목·분개 API가 있고, 기본 DB는 루트의 SQLite(`accounting.db`)입니다. 스키마는 [`migrations/`](migrations/)의 Alembic 이력을 따릅니다. Java 앱과 프로세스·데이터베이스를 공유하지 않으며, Java Flyway가 이 스키마를 바꾸지 않습니다. Python을 Java 대사 API로 대체했다고 보지는 않습니다.
+
+## 초기 설계안
+
+전표 중심 초안 ERD는 [`docs/legacy-erd.md`](docs/legacy-erd.md)에 있습니다. 현재 Java 구현 스키마가 아닙니다.

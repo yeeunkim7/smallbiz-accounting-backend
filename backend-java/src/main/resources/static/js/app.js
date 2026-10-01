@@ -397,11 +397,11 @@
 			tr.appendChild(td(row.vendorName));
 			tr.appendChild(td(eventTypeLabel(row.eventType)));
 			tr.appendChild(td(money(row.amount), "num"));
-			tr.appendChild(td(row.note));
-			tr.appendChild(td(row.sourceLineId, "break"));
+			tr.appendChild(td(row.note, "clip"));
+			tr.appendChild(td(row.sourceLineId, "clip"));
 			tr.appendChild(td(String(row.sourceRowNumber), "num"));
 			var meta = uploads[row.uploadId];
-			tr.appendChild(td(meta ? meta.originalFilename : "—"));
+			tr.appendChild(td(meta ? meta.originalFilename : "—", "clip"));
 			tr.appendChild(td(meta ? formatInstant(meta.uploadedAt) : "—"));
 			tbody.appendChild(tr);
 		});
@@ -417,12 +417,12 @@
 			var tr = document.createElement("tr");
 			tr.appendChild(td(directionLabel(row.direction)));
 			tr.appendChild(td(money(row.amount), "num"));
-			tr.appendChild(td(row.counterpartyName));
-			tr.appendChild(td(row.description));
-			tr.appendChild(td(row.sourceLineId, "break"));
+			tr.appendChild(td(row.counterpartyName, "clip"));
+			tr.appendChild(td(row.description, "clip"));
+			tr.appendChild(td(row.sourceLineId, "clip"));
 			tr.appendChild(td(String(row.sourceRowNumber), "num"));
 			var meta = uploads[row.uploadId];
-			tr.appendChild(td(meta ? meta.originalFilename : "—"));
+			tr.appendChild(td(meta ? meta.originalFilename : "—", "clip"));
 			tr.appendChild(td(meta ? formatInstant(meta.uploadedAt) : "—"));
 			tbody.appendChild(tr);
 		});
@@ -537,9 +537,11 @@
 			}
 			var days = (daily && daily.days) ? daily.days : [];
 			var summary = days[0] || null;
-			var cards = $("day-cards");
-			cards.replaceChildren();
-			function addCard(k, vNode) {
+			var cardsIn = $("day-cards-in");
+			var cardsOut = $("day-cards-out");
+			cardsIn.replaceChildren();
+			cardsOut.replaceChildren();
+			function addCard(target, k, vNode) {
 				var div = document.createElement("div");
 				div.className = "card";
 				var kk = document.createElement("div");
@@ -554,19 +556,19 @@
 				}
 				div.appendChild(kk);
 				div.appendChild(vv);
-				cards.appendChild(div);
+				target.appendChild(div);
 			}
 			if (summary) {
-				addCard("예정 입금", money(summary.expectedInAmount));
-				addCard("실제 입금", money(summary.actualInAmount));
-				addCard("입금 차이", money(summary.inDifference));
-				addCard("입금 합계", badge(totalLabel(summary.inTotalStatus)));
-				addCard("예정 출금", money(summary.expectedOutAmount));
-				addCard("실제 출금", money(summary.actualOutAmount));
-				addCard("출금 차이", money(summary.outDifference));
-				addCard("출금 합계", badge(totalLabel(summary.outTotalStatus)));
+				addCard(cardsIn, "예정 입금", money(summary.expectedInAmount));
+				addCard(cardsIn, "실제 입금", money(summary.actualInAmount));
+				addCard(cardsIn, "입금 차이", money(summary.inDifference));
+				addCard(cardsIn, "입금 합계", badge(totalLabel(summary.inTotalStatus)));
+				addCard(cardsOut, "예정 출금", money(summary.expectedOutAmount));
+				addCard(cardsOut, "실제 출금", money(summary.actualOutAmount));
+				addCard(cardsOut, "출금 차이", money(summary.outDifference));
+				addCard(cardsOut, "출금 합계", badge(totalLabel(summary.outTotalStatus)));
 			} else {
-				addCard("집계", "이 날짜의 현금 대사 데이터가 없습니다.");
+				addCard(cardsIn, "집계", "이 날짜의 현금 대사 데이터가 없습니다.");
 			}
 			await loadOriginalPage("biz");
 			if (seq !== loadSeq) {
@@ -993,7 +995,7 @@
 						tr.click();
 					}
 				});
-				tr.appendChild(td(row.originalFilename));
+				tr.appendChild(td(row.originalFilename, "clip"));
 				tr.appendChild(td(window.ReconUploadClient.fileTypeLabel(row.fileType)));
 				tr.appendChild(td(String(row.rowCount), "num"));
 				tr.appendChild(td(formatInstant(row.uploadedAt)));

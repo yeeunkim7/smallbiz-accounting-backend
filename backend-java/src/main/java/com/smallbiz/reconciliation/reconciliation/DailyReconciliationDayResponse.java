@@ -12,6 +12,7 @@ public record DailyReconciliationDayResponse(
 		long outDifference,
 		TotalStatus inTotalStatus,
 		TotalStatus outTotalStatus,
-		SourcePresence sourcePresence
+		SourcePresence sourcePresence,
+		ReviewStatus reviewStatus
 ) {
 }

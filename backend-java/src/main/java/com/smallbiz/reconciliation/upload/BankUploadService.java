@@ -1,14 +1,17 @@
 package com.smallbiz.reconciliation.upload;
 
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.TreeSet;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.smallbiz.reconciliation.common.FieldErrorResponse;
+import com.smallbiz.reconciliation.reconciliation.DailyReviewService;
 
 @Service
 public class BankUploadService {
@@ -17,13 +20,16 @@ public class BankUploadService {
 
 	private final UploadFileRepository uploadFileRepository;
 	private final BankTransactionRepository bankTransactionRepository;
+	private final DailyReviewService dailyReviewService;
 
 	public BankUploadService(
 			UploadFileRepository uploadFileRepository,
-			BankTransactionRepository bankTransactionRepository
+			BankTransactionRepository bankTransactionRepository,
+			DailyReviewService dailyReviewService
 	) {
 		this.uploadFileRepository = uploadFileRepository;
 		this.bankTransactionRepository = bankTransactionRepository;
+		this.dailyReviewService = dailyReviewService;
 	}
 
 	@Transactional
@@ -53,6 +59,11 @@ public class BankUploadService {
 			));
 		}
 		bankTransactionRepository.saveAll(transactions);
+		TreeSet<LocalDate> affectedDates = new TreeSet<>();
+		for (ParsedBankRow row : rows) {
+			affectedDates.add(row.bookedDate());
+		}
+		dailyReviewService.markOriginalsChanged(affectedDates);
 		return new BusinessUploadResponse(
 				uploadFile.getId(),
 				uploadFile.getOriginalFilename(),

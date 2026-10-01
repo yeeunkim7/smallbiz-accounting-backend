@@ -1,16 +1,19 @@
 package com.smallbiz.reconciliation.upload;
 
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.TreeSet;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.smallbiz.reconciliation.common.FieldErrorResponse;
+import com.smallbiz.reconciliation.reconciliation.DailyReviewService;
 import com.smallbiz.reconciliation.vendor.SettlementType;
 import com.smallbiz.reconciliation.vendor.Vendor;
 import com.smallbiz.reconciliation.vendor.VendorRepository;
@@ -23,15 +26,18 @@ public class BusinessUploadService {
 	private final UploadFileRepository uploadFileRepository;
 	private final BusinessEventRepository businessEventRepository;
 	private final VendorRepository vendorRepository;
+	private final DailyReviewService dailyReviewService;
 
 	public BusinessUploadService(
 			UploadFileRepository uploadFileRepository,
 			BusinessEventRepository businessEventRepository,
-			VendorRepository vendorRepository
+			VendorRepository vendorRepository,
+			DailyReviewService dailyReviewService
 	) {
 		this.uploadFileRepository = uploadFileRepository;
 		this.businessEventRepository = businessEventRepository;
 		this.vendorRepository = vendorRepository;
+		this.dailyReviewService = dailyReviewService;
 	}
 
 	@Transactional
@@ -64,6 +70,13 @@ public class BusinessUploadService {
 			));
 		}
 		businessEventRepository.saveAll(events);
+		TreeSet<LocalDate> affectedDates = new TreeSet<>();
+		for (ParsedBusinessRow row : rows) {
+			if (row.eventType() != BusinessEventType.USAGE && row.expectedCashDate() != null) {
+				affectedDates.add(row.expectedCashDate());
+			}
+		}
+		dailyReviewService.markOriginalsChanged(affectedDates);
 		return new BusinessUploadResponse(
 				uploadFile.getId(),
 				uploadFile.getOriginalFilename(),

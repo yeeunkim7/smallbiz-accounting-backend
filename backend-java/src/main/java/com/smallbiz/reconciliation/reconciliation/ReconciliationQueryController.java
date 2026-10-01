@@ -5,10 +5,13 @@ import java.time.LocalDate;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 
@@ -19,13 +22,16 @@ public class ReconciliationQueryController {
 
 	private final ReconciliationQueryService reconciliationQueryService;
 	private final ReconciliationOriginalQueryService originalQueryService;
+	private final DailyReviewService dailyReviewService;
 
 	public ReconciliationQueryController(
 			ReconciliationQueryService reconciliationQueryService,
-			ReconciliationOriginalQueryService originalQueryService
+			ReconciliationOriginalQueryService originalQueryService,
+			DailyReviewService dailyReviewService
 	) {
 		this.reconciliationQueryService = reconciliationQueryService;
 		this.originalQueryService = originalQueryService;
+		this.dailyReviewService = dailyReviewService;
 	}
 
 	@GetMapping("/daily")
@@ -57,5 +63,18 @@ public class ReconciliationQueryController {
 			@RequestParam(defaultValue = "20") @Min(1) @Max(100) int size
 	) {
 		return originalQueryService.bankDay(date, page, size);
+	}
+
+	@GetMapping("/daily/{date}/review")
+	public DailyReviewResponse getReview(@PathVariable LocalDate date) {
+		return dailyReviewService.get(date);
+	}
+
+	@PutMapping("/daily/{date}/review")
+	public DailyReviewResponse putReview(
+			@PathVariable LocalDate date,
+			@Valid @RequestBody DailyReviewUpdateRequest request
+	) {
+		return dailyReviewService.put(date, request);
 	}
 }

@@ -6,8 +6,8 @@ Java 백엔드 MVP 설계다. 인증 없는 로컬 개발용이며 가상 거래
 
 ## 현재 구현 / 후속 구현
 
-- 구현됨: 애플리케이션 기동, `GET /health`, 거래처, 업무·은행 CSV 업로드, 일별·월별 집계, **날짜별 원본·업로드 이력 조회**.
-- 후속: 검토 상태.
+- 구현됨: 애플리케이션 기동, `GET /health`, 거래처, 업무·은행 CSV 업로드, 일별·월별 집계, 날짜별 원본·업로드 이력 조회, **날짜별 검토 상태·메모**.
+- 후속: 화면.
 
 원본 CSV 바이트는 보관하지 않는다. 업로드 메타데이터와 정규화된 행만 저장하므로 원본 파일 재다운로드는 제공하지 않는다.
 
@@ -153,23 +153,25 @@ CHARGE_EXPECTED는 PREPAID, SETTLEMENT_EXPECTED는 POSTPAID만. REFUND_EXPECTED�
 
 기존 `GET /reconciliations/daily?from=&to=` 및 `POST /uploads/business|bank`와 경로가 겹치지 않는다. `GET /uploads/{uploadId}`의 `uploadId`는 숫자다.
 
-## 검토 상태 (후속)
+## 검토 상태
 
-금액 합계 상태와 사람 검토 상태는 분리한다.
+금액 합계(`TOTAL_EQUAL` / `TOTAL_DIFF`)와 사람 검토는 분리한다. 자동으로 `REVIEWED`가 되지 않는다.
 
-- 합계: 예) `DAILY_IN_TOTAL_EQUAL` / `DAILY_IN_TOTAL_DIFF` (입금·출금 각각).
-- 검토: `UNREVIEWED` / `REVIEWED` / `NEEDS_RECHECK`.
+`GET/PUT /api/v1/reconciliations/daily/{date}/review`. 날짜당 1행(`daily_review.review_date` UNIQUE). PUT 본문: `status`(`UNREVIEWED`|`REVIEWED`), `memo`(선택, 최대 2000자), `version`(필수). `NEEDS_RECHECK`는 PUT으로 넣을 수 없다.
 
-업로드 성공 시:
+GET에 행이 없으면 `UNREVIEWED`, `version` 0, 시각·메모 null. GET은 행을 만들지 않는다. 현금 대사 데이터가 없거나 USAGE만 있는 날짜의 PUT은 400.
 
-- 영향 날짜의 기존 `REVIEWED` → `NEEDS_RECHECK`. 메모는 유지.
-- 영향 날짜 기준: 업무는 `expected_cash_date`, 은행은 `booked_date`.
-- `USAGE`만 추가되면 대사 검토 상태를 바꾸지 않는다.
-- `UNREVIEWED`는 그대로 둔다.
-- 검토 당시 차이 금액만 같아도 완료를 유지하지 않는다. 같은 금액이 양쪽에 추가되면 차이는 그대로여도 원본이 바뀐다.
-- GET 조회에서 DB의 검토 상태를 변경하지 않는다.
+성공 업로드(파싱·중복 검사를 통과해 원본이 커밋되는 트랜잭션):
 
-스냅샷 컬럼으로 완료를 유지하는 방식은 사용하지 않는다.
+- 영향 날짜를 오름차순으로 `INSERT … ON CONFLICT DO NOTHING` 후 `SELECT … FOR UPDATE`.
+- 원본이 바뀌므로 상태를 유지하더라도 `updated_at`을 바꿔 버전을 올린다.
+- `REVIEWED`만 `NEEDS_RECHECK`. 메모·`last_reviewed_at` 유지.
+- 업무: `USAGE`가 아닌 행의 `expected_cash_date`. 은행: `booked_date`.
+- 실패·중복 업로드는 이 단계에 도달하지 않는다.
+
+PUT은 같은 행을 `FOR UPDATE`한 뒤 요청 `version`과 비교한다. 다르면 409 `REVIEW_VERSION_CONFLICT`. 업로드가 먼저 커밋되면 예전 화면의 PUT은 거절된다.
+
+일별 집계 `reviewStatus`는 결과 날짜 집합으로 `daily_review`를 한 번 조회한다. 없으면 `UNREVIEWED`.
 
 ## 거래처
 
@@ -182,7 +184,7 @@ CHARGE_EXPECTED는 PREPAID, SETTLEMENT_EXPECTED는 POSTPAID만. REFUND_EXPECTED�
 
 ## 테이블 (후속 포함)
 
-현재 Flyway: V1 vendor, V2 upload_file·business_event, V3 SHA VARCHAR, V4 BANK·bank_transaction, V5 조회용 날짜 인덱스. 검토 테이블은 후속.
+현재 Flyway: V1 vendor, V2 upload_file·business_event, V3 SHA VARCHAR, V4 BANK·bank_transaction, V5 조회용 날짜 인덱스, V6 daily_review.
 
 | 테이블 | 역할 | 유일성 |
 | --- | --- | --- |
@@ -214,14 +216,15 @@ CHARGE_EXPECTED는 PREPAID, SETTLEMENT_EXPECTED는 POSTPAID만. REFUND_EXPECTED�
 - `GET /api/v1/reconciliations/daily/{date}/bank` 200
 - `GET /api/v1/uploads` 200, `fileType` 선택, page 기본 0, size 기본 20, 최대 100, `uploadedAt`·`id` 내림차순
 - `GET /api/v1/uploads/{uploadId}` 200
+- `GET /api/v1/reconciliations/daily/{date}/review` 200
+- `PUT /api/v1/reconciliations/daily/{date}/review` 200
 
 후속:
 
 - `GET /vendors/{id}/business-events`
-- `PUT /reconciliations/daily/{date}/review`
 
-공통 오류: `code`, `message`, 필요 시 `fieldErrors`. 400 입력, 404 없음(`VENDOR_NOT_FOUND`, `UPLOAD_NOT_FOUND`), 409 거래처 코드·동일 파일 해시·`source_line_id` 중복, 413 파일 크기. DB 원문·스택은 응답에 넣지 않는다. UNIQUE가 아닌 무결성 오류를 중복으로 매핑하지 않는다.
+공통 오류: `code`, `message`, 필요 시 `fieldErrors`. 400 입력, 404 없음(`VENDOR_NOT_FOUND`, `UPLOAD_NOT_FOUND`), 409 거래처 코드·동일 파일 해시·`source_line_id` 중복·검토 버전 충돌(`REVIEW_VERSION_CONFLICT`), 413 파일 크기. DB 원문·스택은 응답에 넣지 않는다. UNIQUE가 아닌 무결성 오류를 중복으로 매핑하지 않는다.
 
 ## 미해결
 
-- 업로드와 검토 저장이 **동시에** 실행될 때의 일관성(잠금·재시도)은 검토 기능 구현 단계에서 정한다.
+- 거래처에 업무·은행 거래가 생긴 뒤 정산 방식 변경 제한은 후속.

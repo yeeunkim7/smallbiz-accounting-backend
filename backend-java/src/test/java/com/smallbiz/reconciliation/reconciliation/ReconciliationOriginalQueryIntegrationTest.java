@@ -68,6 +68,7 @@ class ReconciliationOriginalQueryIntegrationTest {
 
 	@BeforeEach
 	void setUp() {
+		jdbcTemplate.update("DELETE FROM daily_review");
 		jdbcTemplate.update("DELETE FROM bank_transaction");
 		jdbcTemplate.update("DELETE FROM business_event");
 		jdbcTemplate.update("DELETE FROM upload_file");

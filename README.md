@@ -40,11 +40,11 @@ PostgreSQL은 이 앱 전용으로 **개발 DB**와 **테스트 DB**를 따로 �
 | 원본 | `GET /api/v1/reconciliations/daily/{date}/business`, `.../bank` |
 | 이력 | `GET /api/v1/uploads`, `GET /api/v1/uploads/{uploadId}` |
 
-Flyway V1–V5. 통합 테스트 33개는 테스트 DB에서 통과한 기록이 있습니다.
+Flyway V1–V5는 원격에 있다. 검토 상태(V6)는 로컬 구현이다.
 
 남은 MVP:
 
-1. 날짜별 검토 상태·메모 (`PUT .../daily/{date}/review`)
+1. 검토 기능 테스트·커밋
 2. (선택) 거래처별 업무 원본
 3. 화면
 

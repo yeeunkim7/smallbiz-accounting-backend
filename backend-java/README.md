@@ -10,7 +10,9 @@
 
 원격 `main`에 있는 기능: 헬스, 거래처, 업무·은행 CSV 업로드, 일별·월별 집계, 날짜별 원본 조회, 업로드 이력 조회 (Flyway V1–V5).
 
-후속: 검토 상태·메모. 화면은 아직 없다.
+로컬에서 이어서 구현 중(미커밋): 날짜별 검토 상태·메모 (Flyway V6).
+
+후속: 화면.
 
 ## 버전
 
@@ -36,9 +38,12 @@ preview/snapshot은 사용하지 않는다.
 - 업로드 이력 (`GET /api/v1/uploads`, `GET /api/v1/uploads/{uploadId}`)
 - Flyway V1–V5 (V5는 조회 날짜 인덱스)
 
+로컬 구현 중(미커밋):
+
+- 날짜별 검토 (`GET/PUT /api/v1/reconciliations/daily/{date}/review`), Flyway V6
+
 ## 후속 예정 (미구현)
 
-- 검토 상태·메모
 - 화면
 
 원본 CSV 파일 자체는 저장하지 않는다. 재다운로드 API는 없다.
@@ -264,6 +269,25 @@ curl.exe -s "http://localhost:8080/api/v1/uploads/1"
 ```
 
 없는 `uploadId`는 404 `UPLOAD_NOT_FOUND`.
+
+## 날짜별 검토
+
+`GET/PUT /api/v1/reconciliations/daily/{date}/review`. 상태는 `UNREVIEWED` / `REVIEWED` / `NEEDS_RECHECK`. PUT은 `UNREVIEWED` 또는 `REVIEWED`와 `version`, 선택 메모(최대 2,000자). `NEEDS_RECHECK`는 성공 업로드만 설정한다.
+
+금액 일치로 자동 완료하지 않는다. 차이가 있어도 사람이 완료할 수 있다. 데이터 없는 날짜(USAGE만 포함)의 PUT은 400. GET은 행이 없으면 `UNREVIEWED`, `version` 0.
+
+성공 업로드는 영향 날짜의 검토 행을 날짜 오름차순으로 `SELECT … FOR UPDATE`한 뒤 버전을 올린다. `REVIEWED`만 `NEEDS_RECHECK`로 바꾸고 메모·마지막 검토 완료 시각은 유지한다. 원본 저장과 같은 트랜잭션이다. 실패·중복 업로드는 검토를 바꾸지 않는다.
+
+PUT은 조회한 `version`이 있어야 한다. 원본이나 검토가 바뀌었으면 409 `REVIEW_VERSION_CONFLICT`이다.
+
+```powershell
+curl.exe -s "http://localhost:8080/api/v1/reconciliations/daily/2026-09-03/review"
+curl.exe -s -X PUT "http://localhost:8080/api/v1/reconciliations/daily/2026-09-03/review" `
+  -H "Content-Type: application/json" `
+  -d "{\"status\":\"REVIEWED\",\"memo\":\"확인\",\"version\":1}"
+```
+
+일별 집계 `reviewStatus`는 날짜 목록을 한 번에 조회한다. 월별 금액 계산은 그대로다.
 
 ## 패키지
 

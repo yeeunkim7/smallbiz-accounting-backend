@@ -5,6 +5,7 @@ import java.time.YearMonth;
 import java.time.format.DateTimeParseException;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
+import java.util.Map;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -15,9 +16,14 @@ public class ReconciliationQueryService {
 	static final int MAX_INCLUSIVE_DAYS = 366;
 
 	private final ReconciliationAggregationRepository aggregationRepository;
+	private final DailyReviewService dailyReviewService;
 
-	public ReconciliationQueryService(ReconciliationAggregationRepository aggregationRepository) {
+	public ReconciliationQueryService(
+			ReconciliationAggregationRepository aggregationRepository,
+			DailyReviewService dailyReviewService
+	) {
 		this.aggregationRepository = aggregationRepository;
+		this.dailyReviewService = dailyReviewService;
 	}
 
 	@Transactional(readOnly = true)
@@ -44,10 +50,13 @@ public class ReconciliationQueryService {
 	}
 
 	private List<DailyReconciliationDayResponse> toDayResponses(List<DailyAmountTotals> totals) {
-		return totals.stream().map(this::toDayResponse).toList();
+		List<LocalDate> dates = totals.stream().map(DailyAmountTotals::date).toList();
+		Map<LocalDate, ReviewStatus> statuses = dailyReviewService.statusesFor(dates);
+		return totals.stream().map(row -> toDayResponse(row, statuses.getOrDefault(row.date(), ReviewStatus.UNREVIEWED)))
+				.toList();
 	}
 
-	DailyReconciliationDayResponse toDayResponse(DailyAmountTotals totals) {
+	DailyReconciliationDayResponse toDayResponse(DailyAmountTotals totals, ReviewStatus reviewStatus) {
 		long inDifference = subtractExact(totals.actualInAmount(), totals.expectedInAmount());
 		long outDifference = subtractExact(totals.actualOutAmount(), totals.expectedOutAmount());
 		SourcePresence presence;
@@ -70,7 +79,8 @@ public class ReconciliationQueryService {
 				outDifference,
 				inDifference == 0 ? TotalStatus.TOTAL_EQUAL : TotalStatus.TOTAL_DIFF,
 				outDifference == 0 ? TotalStatus.TOTAL_EQUAL : TotalStatus.TOTAL_DIFF,
-				presence
+				presence,
+				reviewStatus
 		);
 	}
 

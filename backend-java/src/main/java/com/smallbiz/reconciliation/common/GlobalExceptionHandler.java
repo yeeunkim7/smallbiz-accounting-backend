@@ -22,6 +22,7 @@ import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import org.springframework.web.multipart.support.MissingServletRequestPartException;
 
 import com.smallbiz.reconciliation.reconciliation.InvalidReconciliationQueryException;
+import com.smallbiz.reconciliation.reconciliation.ReviewVersionConflictException;
 import com.smallbiz.reconciliation.upload.DuplicateSourceLineIdException;
 import com.smallbiz.reconciliation.upload.DuplicateUploadFileException;
 import com.smallbiz.reconciliation.upload.PayloadTooLargeException;
@@ -153,6 +154,12 @@ public class GlobalExceptionHandler {
 						ex.getMessage(),
 						List.of(ex.getFieldError())
 				));
+	}
+
+	@ExceptionHandler(ReviewVersionConflictException.class)
+	public ResponseEntity<ErrorResponse> handleReviewVersionConflict(ReviewVersionConflictException ex) {
+		return ResponseEntity.status(HttpStatus.CONFLICT)
+				.body(ErrorResponse.of(ErrorCode.REVIEW_VERSION_CONFLICT, ex.getMessage()));
 	}
 
 	@ExceptionHandler(DuplicateVendorCodeException.class)

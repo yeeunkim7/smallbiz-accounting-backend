@@ -13,6 +13,8 @@
 	var selectedUploadId = null;
 	var uploading = false;
 	var reconEpoch = 0;
+	var lastDailyQuery = null;
+	var selectedBankOriginalId = null;
 
 	function $(id) {
 		return document.getElementById(id);
@@ -268,6 +270,32 @@
 		return v || "2026-09";
 	}
 
+	function hasAmountDiff(day) {
+		return Number(day.inDifference) !== 0 || Number(day.outDifference) !== 0;
+	}
+
+	function applyDailySummary(from, to, days) {
+		lastDailyQuery = { from: from, to: to, days: days };
+		var diffCount = 0;
+		var reviewedCount = 0;
+		var recheckCount = 0;
+		days.forEach(function (day) {
+			if (hasAmountDiff(day)) {
+				diffCount += 1;
+			}
+			if (day.reviewStatus === "REVIEWED") {
+				reviewedCount += 1;
+			} else if (day.reviewStatus === "NEEDS_RECHECK") {
+				recheckCount += 1;
+			}
+		});
+		text($("daily-stat-days"), String(days.length));
+		text($("daily-stat-diff"), String(diffCount));
+		text($("daily-stat-reviewed"), String(reviewedCount));
+		text($("daily-stat-recheck"), String(recheckCount));
+		text($("daily-list-period"), (from || "—") + " ~ " + (to || "—"));
+	}
+
 	async function loadDaily() {
 		var seq = ++loadSeq;
 		var from = $("daily-from").value;
@@ -283,6 +311,7 @@
 				return;
 			}
 			var days = (data && data.days) ? data.days : [];
+			applyDailySummary(from, to, days);
 			if (days.length === 0) {
 				showBanner(banner, "empty", "조회된 날짜가 없습니다.");
 				return;
@@ -294,7 +323,16 @@
 				tr.addEventListener("click", function () {
 					location.hash = "#/day/" + day.date;
 				});
-				tr.appendChild(td(day.date));
+				var dateCell = document.createElement("td");
+				var dateLink = document.createElement("a");
+				dateLink.className = "daily-date-link";
+				dateLink.href = "#/day/" + day.date;
+				dateLink.textContent = day.date;
+				dateLink.addEventListener("click", function (ev) {
+					ev.stopPropagation();
+				});
+				dateCell.appendChild(dateLink);
+				tr.appendChild(dateCell);
 				tr.appendChild(td(money(day.expectedInAmount), "num"));
 				tr.appendChild(td(money(day.actualInAmount), "num"));
 				tr.appendChild(td(money(day.inDifference), "num"));
@@ -407,25 +445,83 @@
 		});
 	}
 
+	function isWooriFingerprint(id) {
+		return typeof id === "string" && /^W1\.[0-9a-f]{64}$/.test(id);
+	}
+
 	function fillBankTable(rows, uploads) {
 		var tbody = $("bank-body");
 		tbody.replaceChildren();
+		var detail = $("bank-original-detail");
 		if (!rows.length) {
+			detail.classList.add("hidden");
+			detail.replaceChildren();
+			selectedBankOriginalId = null;
 			return;
 		}
+		var selectedRow = null;
 		rows.forEach(function (row) {
 			var tr = document.createElement("tr");
+			tr.className = "clickable";
+			tr.tabIndex = 0;
+			if (selectedBankOriginalId === row.id) {
+				tr.classList.add("selected");
+				selectedRow = row;
+			}
+			tr.appendChild(td(row.bookedDate));
+			tr.appendChild(td(row.bookedAt ? formatInstant(row.bookedAt) : null));
 			tr.appendChild(td(directionLabel(row.direction)));
 			tr.appendChild(td(money(row.amount), "num"));
-			tr.appendChild(td(row.counterpartyName, "clip"));
 			tr.appendChild(td(row.description, "clip"));
-			tr.appendChild(td(row.sourceLineId, "clip"));
-			tr.appendChild(td(String(row.sourceRowNumber), "num"));
-			var meta = uploads[row.uploadId];
-			tr.appendChild(td(meta ? meta.originalFilename : "—", "clip"));
-			tr.appendChild(td(meta ? formatInstant(meta.uploadedAt) : "—"));
+			tr.appendChild(td(row.txnType, "clip"));
+			tr.appendChild(td(row.balanceAfter == null ? null : money(row.balanceAfter), "num"));
+			tr.appendChild(td(row.branchName, "clip"));
+			tr.addEventListener("click", function () {
+				document.querySelectorAll("#bank-body tr").forEach(function (el) {
+					el.classList.remove("selected");
+				});
+				tr.classList.add("selected");
+				selectedBankOriginalId = row.id;
+				renderBankOriginalDetail(row, uploads);
+			});
+			tr.addEventListener("keydown", function (ev) {
+				if (ev.key === "Enter" || ev.key === " ") {
+					ev.preventDefault();
+					tr.click();
+				}
+			});
 			tbody.appendChild(tr);
 		});
+		if (selectedRow) {
+			renderBankOriginalDetail(selectedRow, uploads);
+		} else {
+			detail.classList.add("hidden");
+			detail.replaceChildren();
+			selectedBankOriginalId = null;
+		}
+	}
+
+	function renderBankOriginalDetail(row, uploads) {
+		var box = $("bank-original-detail");
+		box.classList.remove("hidden");
+		box.replaceChildren();
+		function line(label, value) {
+			var p = document.createElement("p");
+			p.textContent = label + ": " + (value == null || value === "" ? "—" : String(value));
+			box.appendChild(p);
+		}
+		var meta = uploads[row.uploadId];
+		line("상대 표시", row.counterpartyName);
+		line("CSV 레코드", row.sourceRowNumber);
+		line("파일명", meta ? meta.originalFilename : null);
+		line("업로드 시각", meta ? formatInstant(meta.uploadedAt) : null);
+		if (isWooriFingerprint(row.sourceLineId)) {
+			line("중복 확인용 식별값", row.sourceLineId);
+			line("식별값 의미", "우리은행 표의 거래일시·입출금·거래금액·거래 후 잔액으로 만든 값입니다. 은행이 부여한 거래번호가 아닙니다.");
+		} else {
+			line("원천 거래 ID", row.sourceLineId);
+			line("식별값 의미", "기존 6열 은행 CSV의 source_line_id입니다. 우리은행 표 지문과 같은 실거래인지는 구분하지 않습니다.");
+		}
 	}
 
 	async function loadOriginalPage(kind) {
@@ -524,6 +620,9 @@
 		$("bank-body").replaceChildren();
 		$("biz-pager").replaceChildren();
 		$("bank-pager").replaceChildren();
+		$("bank-original-detail").classList.add("hidden");
+		$("bank-original-detail").replaceChildren();
+		selectedBankOriginalId = null;
 		setSaveEnabled(false);
 		showBanner($("day-banner"), "loading", "불러오는 중…");
 		try {
@@ -543,7 +642,7 @@
 			cardsOut.replaceChildren();
 			function addCard(target, k, vNode) {
 				var div = document.createElement("div");
-				div.className = "card";
+				div.className = "metric";
 				var kk = document.createElement("div");
 				kk.className = "k";
 				kk.textContent = k;
@@ -562,11 +661,11 @@
 				addCard(cardsIn, "예정 입금", money(summary.expectedInAmount));
 				addCard(cardsIn, "실제 입금", money(summary.actualInAmount));
 				addCard(cardsIn, "입금 차이", money(summary.inDifference));
-				addCard(cardsIn, "입금 합계", badge(totalLabel(summary.inTotalStatus)));
+				addCard(cardsIn, "입금 금액 비교", badge(totalLabel(summary.inTotalStatus)));
 				addCard(cardsOut, "예정 출금", money(summary.expectedOutAmount));
 				addCard(cardsOut, "실제 출금", money(summary.actualOutAmount));
 				addCard(cardsOut, "출금 차이", money(summary.outDifference));
-				addCard(cardsOut, "출금 합계", badge(totalLabel(summary.outTotalStatus)));
+				addCard(cardsOut, "출금 금액 비교", badge(totalLabel(summary.outTotalStatus)));
 			} else {
 				addCard(cardsIn, "집계", "이 날짜의 현금 대사 데이터가 없습니다.");
 			}
@@ -657,6 +756,52 @@
 		return checked ? checked.value : "";
 	}
 
+	function updateUploadFileHelp() {
+		var el = $("upload-file-help");
+		var kind = selectedUploadKind();
+		el.replaceChildren();
+		function para(text) {
+			var p = document.createElement("p");
+			p.textContent = text;
+			el.appendChild(p);
+		}
+		if (!kind) {
+			para("업로드할 유형을 먼저 선택하세요.");
+			return;
+		}
+		if (kind === "BUSINESS") {
+			para("헤더: vendor_code, event_type, usage_date, expected_cash_date, amount, note, source_line_id");
+			para("필수: 등록된 거래처 코드. event_type은 CHARGE_EXPECTED, SETTLEMENT_EXPECTED, REFUND_EXPECTED, USAGE. 날짜 YYYY-MM-DD. 금액은 콤마 없는 정수.");
+			para("한도: UTF-8, 5MiB, 데이터 행 10,000개.");
+			return;
+		}
+		if (kind === "BANK") {
+			para("기존 양식 헤더: booked_date, direction, amount, counterparty_name, description, source_line_id");
+			para("우리은행 표 헤더: 거래일시, 거래구분, 기재내용, 출금금액, 입금금액, 잔액, 취급점 (표만 추출한 UTF-8 CSV).");
+			para("거래일시는 YYYY.MM.DD HH:MM:SS만 받습니다. 초가 없거나 다른 날짜 형식은 거절합니다.");
+			para("입금/출금은 빈칸을 0으로 보고 정확히 한쪽만 양수여야 합니다. 금액은 콤마 없는 정수 또는 올바른 천 단위 쉼표, 선택적 원 표시.");
+			para("잔액은 필수입니다. 빈칸을 0으로 바꾸지 않습니다. 거래구분 최대 100자, 기재내용 1,000자, 취급점 200자.");
+			para("우리은행 표에는 은행 고유 ID가 없어 거래일시·입출금·거래금액·거래 후 잔액 지문으로 중복을 판단합니다. 이 값은 은행 거래번호가 아니며 기본 표에는 넣지 않습니다. 기존 6열 CSV의 원천 거래 ID와는 의미가 다르고, 같은 실거래인지는 식별하지 않습니다. 거래처는 자동 연결하지 않습니다.");
+			para("한도: UTF-8, 5MiB, 데이터 행 10,000개.");
+		}
+	}
+
+	function bindHelpToggles() {
+		document.querySelectorAll("[data-help-toggle]").forEach(function (btn) {
+			var panel = document.getElementById(btn.getAttribute("aria-controls"));
+			if (!panel) {
+				return;
+			}
+			panel.hidden = true;
+			btn.setAttribute("aria-expanded", "false");
+			btn.addEventListener("click", function () {
+				var open = btn.getAttribute("aria-expanded") === "true";
+				btn.setAttribute("aria-expanded", open ? "false" : "true");
+				panel.hidden = open;
+			});
+		});
+	}
+
 	function setVendorFormMode(editId, code) {
 		vendorEditId = editId;
 		var codeInput = $("vendor-code");
@@ -665,10 +810,12 @@
 			text($("btn-vendor-save"), "수정 저장");
 			codeInput.readOnly = true;
 			codeInput.value = code || codeInput.value;
+			$("vendor-code-lock-hint").classList.remove("hidden");
 		} else {
 			text($("vendor-form-title"), "거래처 등록");
 			text($("btn-vendor-save"), "등록");
 			codeInput.readOnly = false;
+			$("vendor-code-lock-hint").classList.add("hidden");
 		}
 	}
 
@@ -1057,12 +1204,18 @@
 			$("month-input").value = "2026-09";
 		}
 		$("btn-daily").addEventListener("click", function () {
+			if (parseHash().view === "daily") {
+				loadDaily();
+				return;
+			}
 			location.hash = "#/daily";
-			loadDaily();
 		});
 		$("btn-monthly").addEventListener("click", function () {
+			if (parseHash().view === "monthly") {
+				loadMonthly();
+				return;
+			}
 			location.hash = "#/monthly";
-			loadMonthly();
 		});
 		$("btn-reload-day").addEventListener("click", function () {
 			if (dayState) {
@@ -1078,6 +1231,11 @@
 			resetVendorCreate();
 		});
 		$("upload-form").addEventListener("submit", submitUpload);
+		document.querySelectorAll("input[name='upload-kind']").forEach(function (el) {
+			el.addEventListener("change", updateUploadFileHelp);
+		});
+		bindHelpToggles();
+		updateUploadFileHelp();
 		document.querySelectorAll(".filter-btn").forEach(function (btn) {
 			btn.addEventListener("click", function () {
 				uploadsFilter = btn.getAttribute("data-upload-filter") || "";

@@ -4,12 +4,22 @@
 	<meta charset="UTF-8">
 	<meta name="viewport" content="width=device-width, initial-scale=1">
 	<title>입출금 대사</title>
-	<link rel="stylesheet" href="css/app.css?v=5">
+	<link rel="stylesheet" href="css/app.css?v=11">
 </head>
 <body>
 	<header class="app-header">
 		<div class="app-header-inner">
-			<span class="brand">입출금 대사</span>
+			<a href="#/daily" class="brand">
+				<span class="brand-mark" aria-hidden="true">
+					<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+						<path d="M4 8h11" />
+						<path d="M12 5l3 3-3 3" />
+						<path d="M20 16H9" />
+						<path d="M12 13l-3 3 3 3" />
+					</svg>
+				</span>
+				<span class="brand-text">입출금 대사</span>
+			</a>
 		</div>
 	</header>
 	<nav class="app-nav">
@@ -23,20 +33,43 @@
 	</nav>
 	<main class="page">
 		<section id="view-daily">
-			<div class="page-head">
+			<div class="daily-page-head">
 				<div class="page-titles">
-					<p class="page-kicker">조회</p>
-					<h2>일별 조회</h2>
-					<p class="hint">금액 일치와 검토 상태는 서로 다릅니다. 합계가 같아도 검토가 끝난 것은 아닙니다.</p>
+					<h2 class="daily-title">일별 조회</h2>
 				</div>
+				<a href="#/upload" class="daily-upload-btn">CSV 업로드</a>
 			</div>
-			<div class="panel">
+			<div class="panel daily-filter">
 				<div class="panel-body">
-					<div class="toolbar">
+					<div class="toolbar daily-toolbar">
 						<label>시작일 <input id="daily-from" type="date"></label>
 						<label>종료일 <input id="daily-to" type="date"></label>
 						<button id="btn-daily" type="button" class="primary">조회</button>
 					</div>
+				</div>
+			</div>
+			<div class="daily-stats" aria-label="조회 결과 요약">
+				<div class="daily-stat">
+					<div class="k">데이터 날짜 수</div>
+					<div class="v" id="daily-stat-days">—</div>
+				</div>
+				<div class="daily-stat">
+					<div class="k">차이 있는 날짜 수</div>
+					<div class="v" id="daily-stat-diff">—</div>
+				</div>
+				<div class="daily-stat">
+					<div class="k">검토 완료 날짜 수</div>
+					<div class="v" id="daily-stat-reviewed">—</div>
+				</div>
+				<div class="daily-stat">
+					<div class="k">재확인 필요 날짜 수</div>
+					<div class="v" id="daily-stat-recheck">—</div>
+				</div>
+			</div>
+			<div class="panel daily-list">
+				<div class="daily-list-head">
+					<h3>일별 대사 목록</h3>
+					<p id="daily-list-period" class="hint">아직 조회한 기간이 없습니다.</p>
 				</div>
 				<div id="daily-banner" class="banner hidden"></div>
 				<div class="table-wrap">
@@ -46,17 +79,23 @@
 								<th rowspan="2">날짜</th>
 								<th class="group-in" colspan="4">입금</th>
 								<th class="group-out" colspan="4">출금</th>
-								<th rowspan="2">검토</th>
+								<th rowspan="2" class="th-review">
+									<span class="th-label-row">
+										검토
+										<button type="button" class="help-toggle" data-help-toggle aria-expanded="false" aria-controls="help-daily-review">도움말</button>
+									</span>
+									<div id="help-daily-review" class="help-panel" hidden>금액 비교와 검토 상태는 서로 다릅니다. 금액이 같아도 검토가 끝난 것은 아닙니다.</div>
+								</th>
 							</tr>
 							<tr>
 								<th class="num">예정</th>
 								<th class="num">실제</th>
 								<th class="num">차이</th>
-								<th>합계</th>
+								<th>금액 비교</th>
 								<th class="num">예정</th>
 								<th class="num">실제</th>
 								<th class="num">차이</th>
-								<th>합계</th>
+								<th>금액 비교</th>
 							</tr>
 						</thead>
 						<tbody id="daily-body"></tbody>
@@ -66,14 +105,12 @@
 		</section>
 
 		<section id="view-monthly" class="hidden">
-			<div class="page-head">
+			<div class="screen-head">
 				<div class="page-titles">
-					<p class="page-kicker">조회</p>
-					<h2>월별 조회</h2>
-					<p class="hint">월 합계가 같아도 날짜별로 차이가 남아 있을 수 있습니다. 차이 발생 날짜 수를 함께 확인하세요.</p>
+					<h2 class="screen-title">월별 조회</h2>
 				</div>
 			</div>
-			<div class="panel">
+			<div class="panel filter-panel">
 				<div class="panel-body">
 					<div class="toolbar">
 						<label>연월 <input id="month-input" type="month"></label>
@@ -82,61 +119,76 @@
 				</div>
 				<div id="monthly-banner" class="banner hidden"></div>
 			</div>
-			<div class="card-groups">
-				<div class="stat-panel">
-					<h3 class="stat-panel-title">입금</h3>
-					<div class="stat-row cards">
-						<div class="card"><div class="k">예정 입금</div><div class="v" id="m-expected-in">—</div></div>
-						<div class="card"><div class="k">실제 입금</div><div class="v" id="m-actual-in">—</div></div>
-						<div class="card"><div class="k">입금 차이</div><div class="v" id="m-diff-in">—</div></div>
-						<div class="card"><div class="k">입금 합계</div><div class="v" id="m-in-status">—</div></div>
+			<div class="result-stack">
+				<div class="panel">
+					<div class="panel-head">
+						<h3>입금</h3>
+					</div>
+					<div class="metric-grid metric-grid-4">
+						<div class="metric"><div class="k">예정 입금</div><div class="v" id="m-expected-in">—</div></div>
+						<div class="metric"><div class="k">실제 입금</div><div class="v" id="m-actual-in">—</div></div>
+						<div class="metric"><div class="k">입금 차이</div><div class="v" id="m-diff-in">—</div></div>
+						<div class="metric"><div class="k">입금 금액 비교</div><div class="v" id="m-in-status">—</div></div>
 					</div>
 				</div>
-				<div class="stat-panel">
-					<h3 class="stat-panel-title">출금</h3>
-					<div class="stat-row cards">
-						<div class="card"><div class="k">예정 출금</div><div class="v" id="m-expected-out">—</div></div>
-						<div class="card"><div class="k">실제 출금</div><div class="v" id="m-actual-out">—</div></div>
-						<div class="card"><div class="k">출금 차이</div><div class="v" id="m-diff-out">—</div></div>
-						<div class="card"><div class="k">출금 합계</div><div class="v" id="m-out-status">—</div></div>
+				<div class="panel">
+					<div class="panel-head">
+						<h3>출금</h3>
+					</div>
+					<div class="metric-grid metric-grid-4">
+						<div class="metric"><div class="k">예정 출금</div><div class="v" id="m-expected-out">—</div></div>
+						<div class="metric"><div class="k">실제 출금</div><div class="v" id="m-actual-out">—</div></div>
+						<div class="metric"><div class="k">출금 차이</div><div class="v" id="m-diff-out">—</div></div>
+						<div class="metric"><div class="k">출금 금액 비교</div><div class="v" id="m-out-status">—</div></div>
 					</div>
 				</div>
-				<div class="stat-panel">
-					<h3 class="stat-panel-title">날짜 수</h3>
-					<div class="stat-row cards">
-						<div class="card"><div class="k">데이터 날짜 수</div><div class="v" id="m-data-days">—</div></div>
-						<div class="card"><div class="k">차이 발생 날짜 수</div><div class="v" id="m-diff-days">—</div></div>
+				<div class="panel">
+					<div class="panel-head">
+						<h3>날짜 수</h3>
+					</div>
+					<div class="metric-grid metric-grid-2">
+						<div class="metric"><div class="k">데이터 날짜 수</div><div class="v" id="m-data-days">—</div></div>
+						<div class="metric">
+							<div class="k k-with-help">
+								차이 발생 날짜 수
+								<button type="button" class="help-toggle" data-help-toggle aria-expanded="false" aria-controls="help-monthly-diff">도움말</button>
+							</div>
+							<div id="help-monthly-diff" class="help-panel" hidden>월 합계가 같아도 날짜별 차이가 남을 수 있습니다.</div>
+							<div class="v" id="m-diff-days">—</div>
+						</div>
 					</div>
 				</div>
 			</div>
 		</section>
 
 		<section id="view-day" class="hidden">
-			<div class="page-head">
+			<div class="screen-head">
 				<div class="page-titles">
-					<p class="page-kicker">상세</p>
-					<h2 id="day-title">날짜 상세</h2>
+					<h2 id="day-title" class="screen-title">날짜 상세</h2>
 				</div>
-				<div class="toolbar">
+				<div class="screen-actions">
 					<button id="btn-back" type="button">일별 목록</button>
-					<button id="btn-reload-day" type="button">다시 조회</button>
+					<button id="btn-reload-day" type="button" class="primary">다시 조회</button>
 				</div>
 			</div>
-			<div id="day-banner" class="banner hidden"></div>
-			<div class="card-groups">
-				<div class="stat-panel">
-					<h3 class="stat-panel-title">입금</h3>
-					<div id="day-cards-in" class="stat-row cards"></div>
-				</div>
-				<div class="stat-panel">
-					<h3 class="stat-panel-title">출금</h3>
-					<div id="day-cards-out" class="stat-row cards"></div>
-				</div>
-			</div>
-
-			<div class="section">
-				<h2 class="section-title">업무 원본</h2>
+			<div id="day-banner" class="banner screen-banner hidden"></div>
+			<div class="result-stack">
 				<div class="panel">
+					<div class="panel-head">
+						<h3>입금</h3>
+					</div>
+					<div id="day-cards-in" class="metric-grid metric-grid-4"></div>
+				</div>
+				<div class="panel">
+					<div class="panel-head">
+						<h3>출금</h3>
+					</div>
+					<div id="day-cards-out" class="metric-grid metric-grid-4"></div>
+				</div>
+				<div class="panel">
+					<div class="panel-head">
+						<h3>업무 원본</h3>
+					</div>
 					<div class="table-wrap">
 						<table>
 							<thead>
@@ -157,104 +209,98 @@
 					</div>
 					<div id="biz-pager" class="pager"></div>
 				</div>
-			</div>
-
-			<div class="section">
-				<h2 class="section-title">은행 원본</h2>
 				<div class="panel">
+					<div class="panel-head">
+						<h3>은행 원본</h3>
+						<p class="hint">행을 누르면 식별값과 업로드 정보를 봅니다.</p>
+					</div>
 					<div class="table-wrap">
 						<table>
 							<thead>
 								<tr>
-									<th>구분</th>
-									<th class="num">금액</th>
-									<th>상대 표시</th>
-									<th>적요</th>
-									<th>원천 ID</th>
-									<th class="num">CSV 레코드</th>
-									<th>파일명</th>
-									<th>업로드 시각</th>
+									<th>거래일</th>
+									<th>거래일시</th>
+									<th>입출금 구분</th>
+									<th class="num">거래금액</th>
+									<th>기재내용</th>
+									<th>거래구분</th>
+									<th class="num">거래 후 잔액</th>
+									<th>취급점</th>
 								</tr>
 							</thead>
 							<tbody id="bank-body"></tbody>
 						</table>
 					</div>
 					<div id="bank-pager" class="pager"></div>
+					<div id="bank-original-detail" class="panel meta-box hidden"></div>
 				</div>
-			</div>
-
-			<div class="section">
-				<h2 class="section-title">검토</h2>
-				<div class="review-form">
-					<p>현재 상태: <span id="review-status"></span></p>
-					<p>마지막 검토 완료: <span id="review-last">—</span></p>
-					<label>저장할 상태
-						<select id="review-status-input">
-							<option value="UNREVIEWED">미검토</option>
-							<option value="REVIEWED">검토 완료</option>
-						</select>
-					</label>
-					<label>메모
-						<textarea id="review-memo" maxlength="2000" placeholder="선택 입력, 최대 2,000자"></textarea>
-					</label>
-					<div class="actions">
-						<button id="btn-save" type="button" class="primary" disabled>저장</button>
+				<div class="panel">
+					<div class="panel-head">
+						<div class="head-with-help">
+							<h3>검토</h3>
+							<button type="button" class="help-toggle" data-help-toggle aria-expanded="false" aria-controls="help-day-review">도움말</button>
+						</div>
+						<div id="help-day-review" class="help-panel" hidden>금액 비교와 검토 상태는 서로 다릅니다. 금액이 같아도 검토가 끝난 것은 아닙니다.</div>
+					</div>
+					<div class="review-form">
+						<p>현재 상태: <span id="review-status"></span></p>
+						<p>마지막 검토 완료: <span id="review-last">—</span></p>
+						<label>저장할 상태
+							<select id="review-status-input">
+								<option value="UNREVIEWED">미검토</option>
+								<option value="REVIEWED">검토 완료</option>
+							</select>
+						</label>
+						<label>메모
+							<textarea id="review-memo" maxlength="2000" placeholder="선택 입력, 최대 2,000자"></textarea>
+						</label>
+						<div class="actions">
+							<button id="btn-save" type="button" class="primary" disabled>저장</button>
+						</div>
 					</div>
 				</div>
 			</div>
 		</section>
 
 		<section id="view-upload" class="hidden">
-			<div class="page-head">
+			<div class="screen-head">
 				<div class="page-titles">
-					<p class="page-kicker">업로드</p>
-					<h2>CSV 업로드</h2>
-					<p class="hint">업무 CSV와 은행 CSV는 헤더와 저장 규칙이 다릅니다. 화면의 안내는 편의를 위한 것이고, 최종 결과는 서버 응답입니다.</p>
+					<h2 class="screen-title">CSV 업로드</h2>
+					<p class="hint">업로드할 CSV 유형을 선택하세요.</p>
 				</div>
 			</div>
-			<div class="rules">
-				<div class="card">
-					<div class="k">업무 CSV</div>
-					<div class="v-text">
-						<p>경로 <code>POST /api/v1/uploads/business</code>, 필드 이름 <code>file</code>. UTF-8, 필수 헤더: <code>vendor_code</code>, <code>event_type</code>, <code>usage_date</code>, <code>expected_cash_date</code>, <code>amount</code>, <code>note</code>, <code>source_line_id</code>.</p>
-						<p>등록된 거래처 코드가 필요합니다. <code>event_type</code>은 <code>CHARGE_EXPECTED</code>, <code>SETTLEMENT_EXPECTED</code>, <code>REFUND_EXPECTED</code>, <code>USAGE</code>입니다. 날짜는 YYYY-MM-DD, 금액은 콤마 없는 원화 정수입니다. 본문 5MiB, 데이터 행 10,000개까지입니다.</p>
-					</div>
+			<form id="upload-form" class="panel stack-form" action="#" method="post">
+				<div class="panel-head">
+					<h3>파일 업로드</h3>
 				</div>
-				<div class="card">
-					<div class="k">은행 CSV</div>
-					<div class="v-text">
-						<p>경로 <code>POST /api/v1/uploads/bank</code>, 필드 이름 <code>file</code>. UTF-8, 필수 헤더: <code>booked_date</code>, <code>direction</code>, <code>amount</code>, <code>counterparty_name</code>, <code>description</code>, <code>source_line_id</code>.</p>
-						<p>거래처와 자동으로 연결하지 않습니다. <code>direction</code>은 <code>IN</code> 또는 <code>OUT</code>입니다. 날짜·금액 규칙은 업무 CSV와 같습니다. 본문 5MiB, 데이터 행 10,000개까지입니다.</p>
+				<div class="panel-body">
+					<fieldset>
+						<legend>업로드할 유형</legend>
+						<label class="inline"><input type="radio" name="upload-kind" value="BUSINESS"> 업무 CSV</label>
+						<label class="inline"><input type="radio" name="upload-kind" value="BANK"> 은행 CSV</label>
+					</fieldset>
+					<label>CSV 파일
+						<input id="upload-file" type="file" accept=".csv,text/csv">
+					</label>
+					<button type="button" id="btn-csv-guide" class="help-toggle" data-help-toggle aria-expanded="false" aria-controls="upload-file-help">CSV 작성 안내</button>
+					<div id="upload-file-help" class="help-panel" hidden></div>
+					<div class="actions">
+						<button id="btn-upload" type="submit" class="primary">업로드</button>
 					</div>
-				</div>
-			</div>
-			<form id="upload-form" class="stack-form" action="#" method="post">
-				<fieldset>
-					<legend>업로드할 유형</legend>
-					<label class="inline"><input type="radio" name="upload-kind" value="BUSINESS"> 업무 CSV</label>
-					<label class="inline"><input type="radio" name="upload-kind" value="BANK"> 은행 CSV</label>
-				</fieldset>
-				<label>CSV 파일
-					<input id="upload-file" type="file" accept=".csv,text/csv">
-				</label>
-				<div class="actions">
-					<button id="btn-upload" type="submit" class="primary">업로드</button>
+					<div id="upload-banner" class="banner hidden"></div>
+					<ul id="upload-errors" class="error-list"></ul>
+					<div id="upload-result" class="meta-box hidden"></div>
 				</div>
 			</form>
-			<div id="upload-banner" class="banner hidden"></div>
-			<ul id="upload-errors" class="error-list"></ul>
-			<div id="upload-result" class="meta-box hidden"></div>
 		</section>
 
 		<section id="view-uploads" class="hidden">
-			<div class="page-head">
+			<div class="screen-head">
 				<div class="page-titles">
-					<p class="page-kicker">이력</p>
-					<h2>업로드 이력</h2>
-					<p class="hint">성공 저장된 업로드만 보입니다. 원본 파일 다운로드와 삭제는 없습니다. 서버가 업로드 시각·번호 내림차순으로 정렬합니다.</p>
+					<h2 class="screen-title">업로드 이력</h2>
 				</div>
 			</div>
-			<div class="panel">
+			<div class="panel filter-panel">
 				<div class="panel-body">
 					<div class="toolbar">
 						<div class="filter-bar" role="group" aria-label="업로드 유형 필터">
@@ -263,6 +309,12 @@
 							<button type="button" data-upload-filter="BANK" class="filter-btn">BANK</button>
 						</div>
 					</div>
+				</div>
+			</div>
+			<div class="panel">
+				<div class="panel-head">
+					<h3>업로드 목록</h3>
+					<p class="field-help">최신 업로드순</p>
 				</div>
 				<div id="uploads-banner" class="banner hidden"></div>
 				<div class="table-wrap">
@@ -280,18 +332,19 @@
 				</div>
 				<div id="uploads-pager" class="pager"></div>
 			</div>
-			<div id="upload-detail" class="meta-box hidden"></div>
+			<div id="upload-detail" class="panel meta-box hidden"></div>
 		</section>
 
 		<section id="view-vendors" class="hidden">
-			<div class="page-head">
+			<div class="screen-head">
 				<div class="page-titles">
-					<p class="page-kicker">마스터</p>
-					<h2>거래처</h2>
-					<p class="hint">코드는 등록 후에 바꿀 수 없습니다. 삭제는 없습니다. 목록은 서버가 코드 오름차순으로 페이지 처리합니다.</p>
+					<h2 class="screen-title">거래처</h2>
 				</div>
 			</div>
 			<div class="panel">
+				<div class="panel-head">
+					<h3>거래처 목록</h3>
+				</div>
 				<div id="vendors-banner" class="banner hidden"></div>
 				<div class="table-wrap">
 					<table>
@@ -307,24 +360,31 @@
 				</div>
 				<div id="vendors-pager" class="pager"></div>
 			</div>
-			<form id="vendor-form" class="stack-form" action="#" method="post">
-				<h3 id="vendor-form-title">거래처 등록</h3>
-				<label>거래처 코드
-					<input id="vendor-code" name="vendorCode" maxlength="32" autocomplete="off" spellcheck="false">
-				</label>
-				<label>거래처 이름
-					<input id="vendor-name" name="vendorName" maxlength="100" autocomplete="off">
-				</label>
-				<label>정산 방식
-					<select id="vendor-settlement" name="settlementType">
-						<option value="PREPAID">선불 (PREPAID)</option>
-						<option value="POSTPAID">후불 (POSTPAID)</option>
-					</select>
-				</label>
-				<ul id="vendor-errors" class="error-list"></ul>
-				<div class="actions">
-					<button id="btn-vendor-save" type="submit" class="primary">등록</button>
-					<button id="btn-vendor-cancel" type="button">등록으로 돌아가기</button>
+			<form id="vendor-form" class="panel stack-form" action="#" method="post">
+				<div class="panel-head">
+					<h3 id="vendor-form-title">거래처 등록</h3>
+				</div>
+				<div class="panel-body">
+					<label>거래처 코드
+						<span class="code-field">
+							<input id="vendor-code" name="vendorCode" maxlength="32" autocomplete="off" spellcheck="false">
+							<span id="vendor-code-lock-hint" class="field-help hidden">등록 후 변경할 수 없습니다.</span>
+						</span>
+					</label>
+					<label>거래처 이름
+						<input id="vendor-name" name="vendorName" maxlength="100" autocomplete="off">
+					</label>
+					<label>정산 방식
+						<select id="vendor-settlement" name="settlementType">
+							<option value="PREPAID">선불 (PREPAID)</option>
+							<option value="POSTPAID">후불 (POSTPAID)</option>
+						</select>
+					</label>
+					<ul id="vendor-errors" class="error-list"></ul>
+					<div class="actions">
+						<button id="btn-vendor-save" type="submit" class="primary">등록</button>
+						<button id="btn-vendor-cancel" type="button">등록으로 돌아가기</button>
+					</div>
 				</div>
 			</form>
 		</section>
@@ -332,6 +392,6 @@
 	<script src="js/review-save.js?v=5"></script>
 	<script src="js/vendor-forms.js?v=5"></script>
 	<script src="js/upload-client.js?v=5"></script>
-	<script src="js/app.js?v=5"></script>
+	<script src="js/app.js?v=14"></script>
 </body>
 </html>

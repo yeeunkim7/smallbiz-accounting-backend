@@ -129,6 +129,8 @@ class ReconciliationOriginalQueryIntegrationTest {
 				.andExpect(jsonPath("$.totalElements").value(3))
 				.andExpect(jsonPath("$.content[0].sourceRowNumber").value(2))
 				.andExpect(jsonPath("$.content[0].amount").value(900_000))
+				.andExpect(jsonPath("$.content[0].bookedAt").value(org.hamcrest.Matchers.nullValue()))
+				.andExpect(jsonPath("$.content[0].balanceAfter").value(org.hamcrest.Matchers.nullValue()))
 				.andExpect(jsonPath("$.content[1].sourceRowNumber").value(3))
 				.andExpect(jsonPath("$.content[1].counterpartyName").value("가상입금"))
 				.andExpect(jsonPath("$.content[1].description").value("입금"))

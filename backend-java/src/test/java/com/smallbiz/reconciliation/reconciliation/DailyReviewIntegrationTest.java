@@ -326,10 +326,14 @@ class DailyReviewIntegrationTest {
 							List.of(new ParsedBankRow(
 									2,
 									LocalDate.parse("2026-09-24"),
+									null,
 									BankDirection.IN,
 									7,
 									null,
+									null,
 									"잠금중",
+									null,
+									null,
 									"BANK-REV-LOCK-2"
 							))
 					);
@@ -425,10 +429,14 @@ class DailyReviewIntegrationTest {
 						List.of(new ParsedBankRow(
 								2,
 								LocalDate.parse("2026-09-28"),
+								null,
 								BankDirection.IN,
 								3,
 								null,
+								null,
 								"검토후",
+								null,
+								null,
 								"BANK-REV-B-2"
 						))
 				);

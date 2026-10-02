@@ -10,7 +10,6 @@ import java.util.TreeSet;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import com.smallbiz.reconciliation.common.FieldErrorResponse;
 import com.smallbiz.reconciliation.reconciliation.DailyReviewService;
 
 @Service
@@ -52,10 +51,14 @@ public class BankUploadService {
 					row.sourceLineId(),
 					row.sourceRowNumber(),
 					row.bookedDate(),
+					row.bookedAt(),
 					row.direction(),
 					row.amount(),
+					row.balanceAfter(),
 					row.counterpartyName(),
-					row.description()
+					row.description(),
+					row.txnType(),
+					row.branchName()
 			));
 		}
 		bankTransactionRepository.saveAll(transactions);
@@ -83,28 +86,15 @@ public class BankUploadService {
 		if (existing.isEmpty()) {
 			return;
 		}
-		ErrorCollector errors = new ErrorCollector();
+		CsvFieldErrorBag errors = new CsvFieldErrorBag();
 		for (ParsedBankRow row : rows) {
 			if (existing.contains(row.sourceLineId())) {
-				errors.add(row.sourceRowNumber(), "source_line_id", "이미 저장된 원천 거래 ID입니다.");
+				String message = BankTransactionFingerprint.isReserved(row.sourceLineId())
+						? "같은 거래일시·방향·금액·잔액으로 이미 저장된 거래입니다."
+						: "이미 저장된 원천 거래 ID입니다.";
+				errors.add(row.sourceRowNumber(), "source_line_id", message);
 			}
 		}
 		throw errors.toDuplicateSourceLineIdException();
-	}
-
-	private static final class ErrorCollector {
-		private final List<FieldErrorResponse> items = new ArrayList<>();
-		private int total;
-
-		void add(Integer rowNumber, String field, String message) {
-			total++;
-			if (items.size() < BusinessCsvParser.MAX_ERRORS) {
-				items.add(new FieldErrorResponse(rowNumber, field, message));
-			}
-		}
-
-		DuplicateSourceLineIdException toDuplicateSourceLineIdException() {
-			return new DuplicateSourceLineIdException(List.copyOf(items), total > BusinessCsvParser.MAX_ERRORS);
-		}
 	}
 }

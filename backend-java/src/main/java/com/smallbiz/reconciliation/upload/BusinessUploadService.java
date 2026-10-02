@@ -12,7 +12,6 @@ import java.util.TreeSet;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import com.smallbiz.reconciliation.common.FieldErrorResponse;
 import com.smallbiz.reconciliation.reconciliation.DailyReviewService;
 import com.smallbiz.reconciliation.vendor.SettlementType;
 import com.smallbiz.reconciliation.vendor.Vendor;
@@ -106,7 +105,7 @@ public class BusinessUploadService {
 	}
 
 	private void validateVendors(List<ParsedBusinessRow> rows, Map<String, Vendor> vendors) {
-		ErrorCollector errors = new ErrorCollector();
+		CsvFieldErrorBag errors = new CsvFieldErrorBag();
 		for (ParsedBusinessRow row : rows) {
 			Vendor vendor = vendors.get(row.vendorCode());
 			if (vendor == null) {
@@ -138,36 +137,12 @@ public class BusinessUploadService {
 		if (existing.isEmpty()) {
 			return;
 		}
-		ErrorCollector errors = new ErrorCollector();
+		CsvFieldErrorBag errors = new CsvFieldErrorBag();
 		for (ParsedBusinessRow row : rows) {
 			if (existing.contains(row.sourceLineId())) {
 				errors.add(row.sourceRowNumber(), "source_line_id", "이미 저장된 원천 거래 ID입니다.");
 			}
 		}
 		throw errors.toDuplicateSourceLineIdException();
-	}
-
-	private static final class ErrorCollector {
-		private final List<FieldErrorResponse> items = new ArrayList<>();
-		private int total;
-
-		void add(Integer rowNumber, String field, String message) {
-			total++;
-			if (items.size() < BusinessCsvParser.MAX_ERRORS) {
-				items.add(new FieldErrorResponse(rowNumber, field, message));
-			}
-		}
-
-		boolean hasIssues() {
-			return total > 0;
-		}
-
-		UploadValidationException toValidationException() {
-			return new UploadValidationException(List.copyOf(items), total > BusinessCsvParser.MAX_ERRORS);
-		}
-
-		DuplicateSourceLineIdException toDuplicateSourceLineIdException() {
-			return new DuplicateSourceLineIdException(List.copyOf(items), total > BusinessCsvParser.MAX_ERRORS);
-		}
 	}
 }

@@ -28,14 +28,34 @@ CHARGE_EXPECTED는 PREPAID, SETTLEMENT_EXPECTED는 POSTPAID만. REFUND_EXPECTED�
 
 ## 은행 CSV 업로드
 
-헤더(이름·순서 고정):
+`POST /api/v1/uploads/bank`의 `file` 필드로 받는다. 헤더로 양식을 구분한다.
+
+기존 6열:
 
 `booked_date,direction,amount,counterparty_name,description,source_line_id`
 
+우리은행 표 7열(이름·순서 고정):
+
+`거래일시,거래구분,기재내용,출금금액,입금금액,잔액,취급점`
+
 - UTF-8, BOM 허용. 최대 5MiB, 데이터 최대 10,000행. 해시·한도·오류 100개/`truncated`는 업무 CSV와 같다.
-- `direction`은 `IN` 또는 `OUT`. 입금자명으로 거래처를 연결하지 않으며 `vendor_id`를 저장하지 않는다.
+- 표만 추출한 CSV만 받는다. XLS/XLSX, 상단 계좌 요약·조회 기간 행은 지원하지 않는다.
+- `direction`은 기존 6열에서 `IN` 또는 `OUT`. 우리은행 표는 입금/출금 금액으로만 정한다. 거래구분 원문은 방향 검증에 쓰지 않는다.
+- 입금자명·기재내용으로 거래처를 연결하지 않으며 `vendor_id`를 저장하지 않는다.
 - 은행 `source_line_id` UNIQUE는 `bank_transaction`에만 적용한다. 업무 테이블과 같은 문자열 ID여도 중복이 아니다.
-- 실패 시 이번 요청의 `upload_file`/`bank_transaction`은 남지 않는다.
+- 실패 시 이번 요청의 `upload_file`/`bank_transaction`은 남지 않는다. 실패·중복은 검토 상태를 바꾸지 않는다.
+- 기존 6열과 우리은행 표는 식별자 체계가 달라 **같은 실거래 중복을 식별하지 못한다.**
+
+### 우리은행 표 변환
+
+- 거래일시: `YYYY.MM.DD HH:MM:SS`만. 서울 벽시계를 `booked_at`에 저장하고 로컬 날짜를 `booked_date`에 쓴다. 초 없는 형식·하이픈 날짜는 거절한다.
+- 기존 6열은 시각을 모르므로 `booked_at`은 NULL이다. 자정으로 채우지 않는다.
+- 입금/출금 빈칸은 0. 정확히 한쪽만 양수여야 한다. 거래 금액 한도는 기존과 같이 1 이상 1조.
+- 우리은행 금액은 전용 해석이다. 콤마 없는 정수 또는 올바른 천 단위 쉼표, 선택적 `원`. 소수점·지수·잘못된 쉼표·부호·숫자 중간 공백은 거절하며 문자를 지워 고치지 않는다. 기존 `CsvAmounts` 조건은 바꾸지 않는다.
+- 잔액은 필수. 빈칸을 0으로 바꾸지 않는다. 0 이상 Java `long` 범위.
+- 거래구분 최대 100자, 기재내용 1,000자, 취급점 200자. 원문으로 보존한다.
+- 은행 고유 ID가 없어 `W1.` + SHA-256 hex를 **중복 판단용 지문**으로 `source_line_id`에 넣는다. 정규화: 서울 거래일시(초)·방향·금액·잔액. 파일명·행 번호·적요·취급점은 넣지 않는다. 같은 지문은 요청 전체를 거절한다.
+- 기존 6열 `source_line_id`가 `W1.` + 64자리 소문자 hex이면 예약 형식으로 거절한다.
 
 ## 대사 기준
 
@@ -63,7 +83,7 @@ CHARGE_EXPECTED는 PREPAID, SETTLEMENT_EXPECTED는 POSTPAID만. REFUND_EXPECTED�
 
 - Java `long`, PostgreSQL `BIGINT`, JSON 정수.
 - `double` / `float` 사용 금지. MVP에서 소수 원화가 없으므로 `BigDecimal`도 쓰지 않는다.
-- 검증: 정수만, `> 0`, 상한 1조(1_000_000_000_000). CSV에 소수점이 있으면 행 오류.
+- 검증: 정수만, `> 0`, 상한 1조(1_000_000_000_000). 기존 업무·6열 은행 CSV에 소수점이 있으면 행 오류. 우리은행 표 금액은 전용 규칙을 쓴다.
 
 ## CSV 양식
 
@@ -101,7 +121,8 @@ CHARGE_EXPECTED는 PREPAID, SETTLEMENT_EXPECTED는 POSTPAID만. REFUND_EXPECTED�
 - 업로드 파일에서의 위치는 `source_row_number`로 저장한다.
 - `source_row_number`는 헤더를 1행으로 세는 CSV 레코드 번호다. 첫 데이터 행은 2.
 - 업무 테이블과 은행 테이블 각각에서 `source_line_id` UNIQUE.
-- 합성 데이터에는 안정적인 ID를 부여한다. 실제 은행 파일에 동일 필드가 있다고 가정하지 않는다. 실제 은행 연동은 MVP 밖이다.
+- 합성 데이터에는 안정적인 ID를 부여한다. 실제 은행 파일에 동일 필드가 있다고 가정하지 않는다.
+- 우리은행 표의 `source_line_id`는 은행 고유 ID가 아니라 거래일시·입출금·거래금액·거래 후 잔액으로 만든 중복 확인용 식별값이다. 화면 기본 표에는 넣지 않는다. 기존 6열 CSV의 원천 거래 ID와 의미가 다르며, 같은 실거래인지는 구별하지 못한다.
 
 ## 업로드 중복 및 원자성
 
@@ -147,7 +168,7 @@ CHARGE_EXPECTED는 PREPAID, SETTLEMENT_EXPECTED는 POSTPAID만. REFUND_EXPECTED�
 
 ## 날짜별 원본·업로드 이력
 
-`GET /api/v1/reconciliations/daily/{date}/business`, `.../bank`: 집계와 같은 날짜·유형. 업무는 `CHARGE_EXPECTED`·`SETTLEMENT_EXPECTED`·`REFUND_EXPECTED`만. `USAGE` 제외. 은행은 해당 `booked_date` 전체. 거래처 자동 연결 없음. 응답은 DTO. 정렬 `source_row_number`, `id`. 빈 날짜는 200·빈 목록.
+`GET /api/v1/reconciliations/daily/{date}/business`, `.../bank`: 집계와 같은 날짜·유형. 업무는 `CHARGE_EXPECTED`·`SETTLEMENT_EXPECTED`·`REFUND_EXPECTED`만. `USAGE` 제외. 은행은 해당 `booked_date` 전체. 거래처 자동 연결 없음. 은행 원본 DTO는 `bookedAt`, `balanceAfter`, `txnType`, `branchName`을 포함한다. 기존 6열은 이 값이 null이다. 정렬 `source_row_number`, `id`. 빈 날짜는 200·빈 목록.
 
 `GET /api/v1/uploads`, `GET /api/v1/uploads/{uploadId}`: 성공 저장된 이력만. 파일 바이트와 원본 행 전체는 반환하지 않는다.
 
@@ -184,14 +205,14 @@ PUT은 같은 행을 `FOR UPDATE`한 뒤 요청 `version`과 비교한다. 다�
 
 ## 테이블 (후속 포함)
 
-현재 Flyway: V1 vendor, V2 upload_file·business_event, V3 SHA VARCHAR, V4 BANK·bank_transaction, V5 조회용 날짜 인덱스, V6 daily_review.
+현재 Flyway: V1 vendor, V2 upload_file·business_event, V3 SHA VARCHAR, V4 BANK·bank_transaction, V5 조회용 날짜 인덱스, V6 daily_review, V7 은행 거래일시·잔액·거래구분·취급점(기존 행은 NULL).
 
 | 테이블 | 역할 | 유일성 |
 | --- | --- | --- |
 | vendor | 거래처 마스터 | vendor_code |
 | upload_file | 파일 종류, 원본 이름, SHA-256, 시각 | content_sha256 |
 | business_event | 업무 원본 1행, source_row_number, vendor FK | source_line_id |
-| bank_transaction | 은행 원본 1행, source_row_number. 거래처 FK 없음 | source_line_id |
+| bank_transaction | 은행 원본 1행. 우리은행 표는 booked_at·잔액·거래구분·취급점. 거래처 FK 없음 | source_line_id |
 | daily_review | 날짜별 검토 상태·메모 | review_date |
 
 일별 합계는 조회 시 집계한다. 확정 저장하지 않는다.

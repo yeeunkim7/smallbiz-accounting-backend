@@ -45,7 +45,7 @@ final class UploadFileSupport {
 		if (name.isEmpty()) {
 			name = fallback;
 		}
-		if (name.length() > BusinessCsvParser.MAX_FILENAME_LENGTH) {
+		if (name.length() > CsvUploadLimits.MAX_FILENAME_LENGTH) {
 			throw new UploadValidationException(
 					List.of(new FieldErrorResponse("file", "파일 이름은 255자 이하여야 합니다.")),
 					false

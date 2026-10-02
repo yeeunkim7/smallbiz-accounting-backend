@@ -24,13 +24,6 @@ import com.smallbiz.reconciliation.common.FieldErrorResponse;
 @Component
 public class BusinessCsvParser {
 
-	static final long MAX_AMOUNT = 1_000_000_000_000L;
-	static final int MAX_DATA_ROWS = 10_000;
-	static final int MAX_ERRORS = 100;
-	static final int MAX_NOTE_LENGTH = 1_000;
-	static final int MAX_SOURCE_LINE_ID_LENGTH = 100;
-	static final int MAX_FILENAME_LENGTH = 255;
-
 	private static final List<String> HEADERS = List.of(
 			"vendor_code",
 			"event_type",
@@ -84,7 +77,7 @@ public class BusinessCsvParser {
 		if (headerNames == null || headerNames.isEmpty()) {
 			throw fileError("file", "CSV 헤더가 없습니다.");
 		}
-		ErrorBag errors = new ErrorBag();
+		CsvFieldErrorBag errors = new CsvFieldErrorBag();
 		validateHeaders(headerNames, errors);
 		if (errors.hasIssues()) {
 			throw errors.toValidationException();
@@ -92,11 +85,11 @@ public class BusinessCsvParser {
 
 		List<ParsedBusinessRow> rows = new ArrayList<>();
 		Map<String, Integer> sourceLineFirstRow = new HashMap<>();
-		ErrorBag duplicateIds = new ErrorBag();
+		CsvFieldErrorBag duplicateIds = new CsvFieldErrorBag();
 		int dataIndex = 0;
 		for (CSVRecord record : parser) {
 			dataIndex++;
-			if (dataIndex > MAX_DATA_ROWS) {
+			if (dataIndex > CsvUploadLimits.MAX_DATA_ROWS) {
 				errors.add(null, "file", "데이터 행은 최대 10,000개까지 허용합니다.");
 				break;
 			}
@@ -132,7 +125,7 @@ public class BusinessCsvParser {
 		return rows;
 	}
 
-	private void validateHeaders(List<String> headerNames, ErrorBag errors) {
+	private void validateHeaders(List<String> headerNames, CsvFieldErrorBag errors) {
 		List<String> trimmed = headerNames.stream().map(this::trimToEmpty).toList();
 		if (trimmed.size() != HEADERS.size()) {
 			errors.add(null, "file", "헤더 이름과 순서가 고정 양식과 다릅니다.");
@@ -151,7 +144,7 @@ public class BusinessCsvParser {
 		}
 	}
 
-	private ParsedBusinessRow parseRow(CSVRecord record, int sourceRowNumber, ErrorBag errors) {
+	private ParsedBusinessRow parseRow(CSVRecord record, int sourceRowNumber, CsvFieldErrorBag errors) {
 		int before = errors.total();
 		String vendorCode = requiredText(record, "vendor_code", sourceRowNumber, errors, 32);
 		String eventTypeRaw = requiredText(record, "event_type", sourceRowNumber, errors, 32);
@@ -164,10 +157,10 @@ public class BusinessCsvParser {
 				"source_line_id",
 				sourceRowNumber,
 				errors,
-				MAX_SOURCE_LINE_ID_LENGTH
+				CsvUploadLimits.MAX_SOURCE_LINE_ID_LENGTH
 		);
 
-		if (note != null && note.length() > MAX_NOTE_LENGTH) {
+		if (note != null && note.length() > CsvUploadLimits.MAX_NOTE_LENGTH) {
 			errors.add(sourceRowNumber, "note", "비고는 1,000자 이하여야 합니다.");
 		}
 
@@ -183,7 +176,7 @@ public class BusinessCsvParser {
 
 		LocalDate usageDate = parseDate(usageRaw, sourceRowNumber, "usage_date", errors);
 		LocalDate expectedCashDate = parseDate(expectedRaw, sourceRowNumber, "expected_cash_date", errors);
-		Long amount = parseAmount(amountRaw, sourceRowNumber, errors);
+		Long amount = CsvAmounts.parse(amountRaw, sourceRowNumber, errors);
 
 		if (eventType == BusinessEventType.USAGE) {
 			if (usageRaw == null) {
@@ -223,7 +216,7 @@ public class BusinessCsvParser {
 			CSVRecord record,
 			String field,
 			int sourceRowNumber,
-			ErrorBag errors,
+			CsvFieldErrorBag errors,
 			int maxLength
 	) {
 		String value = optionalText(record, field);
@@ -245,7 +238,7 @@ public class BusinessCsvParser {
 		return trimToNull(record.get(field));
 	}
 
-	private LocalDate parseDate(String raw, int sourceRowNumber, String field, ErrorBag errors) {
+	private LocalDate parseDate(String raw, int sourceRowNumber, String field, CsvFieldErrorBag errors) {
 		if (raw == null) {
 			return null;
 		}
@@ -254,28 +247,6 @@ public class BusinessCsvParser {
 		}
 		catch (DateTimeParseException ex) {
 			errors.add(sourceRowNumber, field, "날짜는 YYYY-MM-DD 형식의 실재하는 날짜여야 합니다.");
-			return null;
-		}
-	}
-
-	private Long parseAmount(String raw, int sourceRowNumber, ErrorBag errors) {
-		if (raw == null) {
-			return null;
-		}
-		if (!raw.matches("^[0-9]+$") || raw.startsWith("0")) {
-			errors.add(sourceRowNumber, "amount", "금액은 콤마·소수점·부호 없는 원화 정수여야 합니다.");
-			return null;
-		}
-		try {
-			long value = Long.parseLong(raw);
-			if (value < 1 || value > MAX_AMOUNT) {
-				errors.add(sourceRowNumber, "amount", "금액은 1 이상 1조 이하여야 합니다.");
-				return null;
-			}
-			return value;
-		}
-		catch (NumberFormatException ex) {
-			errors.add(sourceRowNumber, "amount", "금액은 1 이상 1조 이하여야 합니다.");
 			return null;
 		}
 	}
@@ -303,33 +274,5 @@ public class BusinessCsvParser {
 		}
 		String trimmed = value.trim();
 		return trimmed.isEmpty() ? null : trimmed;
-	}
-
-	private static final class ErrorBag {
-		private final List<FieldErrorResponse> items = new ArrayList<>();
-		private int total;
-
-		void add(Integer rowNumber, String field, String message) {
-			total++;
-			if (items.size() < MAX_ERRORS) {
-				items.add(new FieldErrorResponse(rowNumber, field, message));
-			}
-		}
-
-		boolean hasIssues() {
-			return total > 0;
-		}
-
-		int total() {
-			return total;
-		}
-
-		UploadValidationException toValidationException() {
-			return new UploadValidationException(List.copyOf(items), total > MAX_ERRORS);
-		}
-
-		DuplicateSourceLineIdException toDuplicateSourceLineIdException() {
-			return new DuplicateSourceLineIdException(List.copyOf(items), total > MAX_ERRORS);
-		}
 	}
 }

@@ -1,5 +1,6 @@
 package com.smallbiz.reconciliation.upload;
 
+import java.time.Instant;
 import java.time.LocalDate;
 
 import jakarta.persistence.Column;
@@ -35,6 +36,9 @@ public class BankTransaction {
 	@Column(name = "booked_date", nullable = false)
 	private LocalDate bookedDate;
 
+	@Column(name = "booked_at")
+	private Instant bookedAt;
+
 	@Enumerated(EnumType.STRING)
 	@Column(name = "direction", nullable = false, length = 8)
 	private BankDirection direction;
@@ -42,11 +46,20 @@ public class BankTransaction {
 	@Column(name = "amount", nullable = false)
 	private long amount;
 
+	@Column(name = "balance_after")
+	private Long balanceAfter;
+
 	@Column(name = "counterparty_name", length = 200)
 	private String counterpartyName;
 
 	@Column(name = "description", length = 1000)
 	private String description;
+
+	@Column(name = "txn_type", length = 100)
+	private String txnType;
+
+	@Column(name = "branch_name", length = 200)
+	private String branchName;
 
 	protected BankTransaction() {
 	}
@@ -61,14 +74,48 @@ public class BankTransaction {
 			String counterpartyName,
 			String description
 	) {
+		this(
+				uploadFile,
+				sourceLineId,
+				sourceRowNumber,
+				bookedDate,
+				null,
+				direction,
+				amount,
+				null,
+				counterpartyName,
+				description,
+				null,
+				null
+		);
+	}
+
+	public BankTransaction(
+			UploadFile uploadFile,
+			String sourceLineId,
+			int sourceRowNumber,
+			LocalDate bookedDate,
+			Instant bookedAt,
+			BankDirection direction,
+			long amount,
+			Long balanceAfter,
+			String counterpartyName,
+			String description,
+			String txnType,
+			String branchName
+	) {
 		this.uploadFile = uploadFile;
 		this.sourceLineId = sourceLineId;
 		this.sourceRowNumber = sourceRowNumber;
 		this.bookedDate = bookedDate;
+		this.bookedAt = bookedAt;
 		this.direction = direction;
 		this.amount = amount;
+		this.balanceAfter = balanceAfter;
 		this.counterpartyName = counterpartyName;
 		this.description = description;
+		this.txnType = txnType;
+		this.branchName = branchName;
 	}
 
 	public Long getId() {
@@ -91,6 +138,10 @@ public class BankTransaction {
 		return bookedDate;
 	}
 
+	public Instant getBookedAt() {
+		return bookedAt;
+	}
+
 	public BankDirection getDirection() {
 		return direction;
 	}
@@ -99,11 +150,23 @@ public class BankTransaction {
 		return amount;
 	}
 
+	public Long getBalanceAfter() {
+		return balanceAfter;
+	}
+
 	public String getCounterpartyName() {
 		return counterpartyName;
 	}
 
 	public String getDescription() {
 		return description;
+	}
+
+	public String getTxnType() {
+		return txnType;
+	}
+
+	public String getBranchName() {
+		return branchName;
 	}
 }

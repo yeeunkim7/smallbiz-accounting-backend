@@ -2,6 +2,8 @@
 
 이 디렉터리가 실행 단위입니다. 프로젝트 소개는 [../README.md](../README.md), 집계·검토 규칙은 [docs/design.md](docs/design.md)를 봅니다.
 
+`src/main/java/com/smallbiz/reconciliation/learn/`은 거래 비교 키 반복을 가리는 학습 코드입니다. **기존 CSV 업로드·저장·검토에는 연결되어 있지 않습니다.** `TransactionKeyHashSet`과 `TransactionDuplicateChecker`는 구현되어 있고, 같은 패키지의 순수 단위 테스트(2026-10-06, Java 21, 11개 성공)로 확인했습니다. DB가 필요한 통합 테스트는 이 패키지 실행에 포함하지 않았습니다. 자세한 범위는 루트 README의 「학습용 거래 비교 키」를 봅니다.
+
 ## 준비
 
 - JDK 21. `JAVA_HOME`은 본인 PC의 JDK 21 설치 경로로 지정합니다.

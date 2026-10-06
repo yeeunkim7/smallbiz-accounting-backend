@@ -34,6 +34,22 @@
 - **원본·이력** — 날짜별 업무·은행 행, 성공 업로드 목록·단건.
 - **검토** — `GET/PUT /api/v1/reconciliations/daily/{date}/review`. PUT 본문의 `version`은 **원본 행이 아니라 `daily_review` 행**의 낙관적 잠금 값입니다. PUT은 원본을 덮어쓰지 않습니다.
 
+## 학습용 거래 비교 키
+
+정산 업무에서 같은 조합이 여러 행에 반복되면 사람이 표를 일일이 대조해야 했던 경험을 배경으로, 한 CSV 안에서 비교 키의 반복을 가리는 자료구조를 학습하는 코드가 `com.smallbiz.reconciliation.learn`에 있습니다. 비플식권 자동 대사 시스템의 설계자는 개발팀입니다. 이 저장소의 학습 코드는 그 시스템 설계를 대체하지 않습니다.
+
+**독립된 학습 코드이며 기존 업로드에는 미연결입니다.** `BankUploadController`·파서·저장·검토 화면은 이 패키지를 호출하지 않습니다. 토스 양식과 반복 행 검토 화면은 없습니다.
+
+비교 키 `TransactionKey`는 거래일시(`Instant bookedAt`)·입출금(`BankDirection`)·거래기관(`String institution`)·금액(`long amount`)·거래 후 잔액(`Long balanceAfter`)입니다. 은행이 발급한 고유 거래번호가 아니며, 같은 계좌의 한 CSV 안에서 같은 조합을 찾는 용도입니다. `equals`/`hashCode`는 이 다섯 항목만 사용합니다. `balanceAfter`가 `null`인 빈 잔액과 `0`은 다른 키입니다. 코드는 우리은행 `branchName`(취급점)을 `institution`으로 자동 대체하지 않습니다.
+
+기존 업로드 중복 방지(파일 SHA-256, `source_line_id`, DB UNIQUE, 저장 트랜잭션 전체 거절, 검토 상태)와 이 학습 코드는 역할이 다릅니다. 우리은행 `source_line_id` 지문은 거래일시·방향·금액·잔액이며 취급점을 넣지 않습니다.
+
+`TransactionKeyHashSet`은 `Node[]`와 직접 정의한 연결 노드로 저장합니다. `contains`는 `Math.floorMod`로 버킷을 고르고 체인을 `equals`로 조회하며 집합을 바꾸지 않습니다. `add`는 기존 키면 `false`, 새 키면 필요 시 배열을 두 배로 늘린 뒤 버킷 앞에 삽입합니다. 기본 용량 16, 적재율 75%입니다. 핵심 저장·조회에 `HashSet`/`HashMap`/`LinkedList`를 쓰지 않습니다.
+
+`TransactionDuplicateChecker`는 위 집합 두 개로 1차에서 처음 본 키와 반복 키를 모으고, 2차에서 반복 키의 모든 행을 입력 순으로 `ArrayList`에 넣습니다. 같은 키가 3행이면 반복 발생 2, 반복 키 종류 1, 확인 대상 3행입니다. 호출마다 새 집합을 씁니다.
+
+**검증 (이 저장소, Java 21):** `.\gradlew.bat test --tests com.smallbiz.reconciliation.learn.*` **2026-10-06 10:49 KST**, `TransactionKeyHashSetTest` 7 + `TransactionDuplicateCheckerTest` 4, 실패 0, 건너뜀 0. 실제 `TransactionKey`를 사용했고 DB는 쓰지 않았습니다. 기존 통합 테스트 전체는 이번 변경 후 재실행하지 않았습니다. 2026-10-02 45개 통과는 학습 패키지 이전 기록입니다. 별도 ChatGPT Java 17 환경의 대역 `TransactionKey` 10개 통과는 이 프로젝트 클래스·이번 Gradle 실행이 아닙니다.
+
 ## 핵심 설계와 검증
 
 **파일 해시·원천 ID와 전체 롤백.** 같은 내용(SHA-256)이나 이미 있는 `source_line_id`가 있으면 요청 전체를 거절합니다. DB UNIQUE와 애플리케이션 검사가 함께 동작합니다. 저장 트랜잭션이 실패하면 이번 요청의 업로드 메타데이터와 원본 행은 남지 않습니다.
@@ -71,7 +87,7 @@
 | Apache Commons CSV | 1.14.0 | CSV 파싱 |
 | Gradle Wrapper | 9.7.1 | 빌드·테스트·기동 |
 
-패키지 `com.smallbiz.reconciliation`: `health`, `vendor`, `upload`, `reconciliation`, `common`.
+패키지 `com.smallbiz.reconciliation`: `health`, `vendor`, `upload`, `reconciliation`, `common`, `learn`(업로드 미연결).
 
 ## 현재 Java ERD
 
@@ -155,9 +171,9 @@ erDiagram
 
 ## 구현 범위
 
-인증 없는 로컬 MVP입니다. 거래처, 업무·기존 6열·우리은행 표 CSV, 일별·월별 비교, 원본·이력, 날짜별 검토·재확인, 정적 화면까지 포함합니다.
+인증 없는 로컬 MVP입니다. 거래처, 업무·기존 6열·우리은행 표 CSV, 일별·월별 비교, 원본·이력, 날짜별 검토·재확인, 정적 화면까지 포함합니다. `learn` 패키지는 학습용이며 업로드 API·화면에 포함하지 않습니다.
 
-포함하지 않는 것: 로그인, 은행 Open API, XLS/XLSX 직접 업로드, 거래 단위 자동 매칭, 원본 CSV 재다운로드, 실패 업로드 이력, 거래처별 은행 대사 확정. 거래처별 업무 원본 목록은 설계만 있고 API는 없습니다.
+포함하지 않는 것: 로그인, 은행 Open API, XLS/XLSX 직접 업로드, 거래 단위 자동 매칭, 원본 CSV 재다운로드, 실패 업로드 이력, 거래처별 은행 대사 확정, 토스 전용 CSV, 반복 행 검토 화면. 거래처별 업무 원본 목록은 설계만 있고 API는 없습니다.
 
 [`app/`](app/)은 FastAPI 전표 실험입니다. 기본 DB는 루트 SQLite(`accounting.db`), 스키마는 [`migrations/`](migrations/). Java 앱과 프로세스·데이터베이스를 공유하지 않습니다.
 

@@ -1,0 +1,2 @@
+vendor_code,event_type,usage_date,expected_cash_date,amount,note,source_line_id
+DEMO-PRE,CHARGE_EXPECTED,,2026-10-31,90000,예제 충전 예정,DEMO-BIZ-20261031-001

@@ -34,7 +34,7 @@ import com.smallbiz.reconciliation.vendor.VendorRepository;
 
 @SpringBootTest
 @AutoConfigureMockMvc
-@ActiveProfiles("test")
+@ActiveProfiles({"test", "legacy-dev"})
 @ContextConfiguration(initializers = RejectDevelopmentDatabaseInitializer.class)
 class ReconciliationQueryIntegrationTest {
 

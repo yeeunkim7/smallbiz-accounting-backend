@@ -1,3 +1,5 @@
+> 개발 방향 갱신: 소규모 사업자의 **미수금·입금 확인 FREE MVP**를 우선 개발합니다. 기존 대사 기능과 AI 작업은 보존하며, AI는 향후 PRO 기능으로 분리합니다. 현재는 P0 점검·설계 단계로 무료 서비스가 출시된 상태는 아닙니다. [갱신된 개발 계획](docs/RECEIVABLES_FREE_MVP_PLAN.md)
+
 # 입출금 대사 시스템
 
 업무상 입출금 예정 금액과 은행의 실제 거래 내역을 비교하는 Java/Spring Boot 프로젝트입니다.
@@ -266,3 +268,13 @@ CSV 업로드는 multipart 요청의 `file` 필드를 사용합니다. CSV 헤�
 | [`docs/legacy-erd.md`](docs/legacy-erd.md) | 초기 전표 중심 설계 |
 
 FastAPI 실험 코드는 루트의 SQLite `accounting.db`를 사용하며, Java 앱과 프로세스·데이터베이스를 공유하지 않습니다. `docs/legacy-erd.md` 역시 현재 Java 스키마와는 별도의 초기 설계 문서입니다.
+
+## 읽기 전용 하루 AI 검토
+
+`/ai-review.html`에서 날짜별 입출금 요약과 원본·관련 업로드를 확인할 수 있습니다. AI에는 네 조회 도구만 제공하며 거래 변경과 검토 완료 저장은 하지 않습니다. 실제 모델 호출은 별도 키·네트워크·비용 확인 후 검증해야 합니다.
+
+[실행·검증 안내](docs/ai-review-running.md) · [작업 상태](docs/AI_REVIEW_WORK.md) · [시장 조사](docs/ai-review-research.md) · [화면 설계](docs/ai-review-design.md)
+
+## 계정·사업체 보안 기반
+
+회원가입·로그인·로그아웃과 사업체 멤버십 API를 추가했습니다. 기본 실행에서는 기존 전역 금융 API 접근을 차단하며, 과거 화면의 익명 개발 모드는 명시적 legacy-dev 설정으로만 사용합니다. FREE/STANDARD는 AI를 호출하지 못하고 PRO도 tenant 전용 도구 준비 전까지 차단합니다. [인증기반안내](docs/AUTH_FOUNDATION.md). 청구·입금 배분·이용량·모바일은 다음 기능 단위입니다.

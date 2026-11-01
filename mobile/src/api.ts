@@ -1,6 +1,7 @@
+import type { Usage } from './types';
 import type { SessionState } from './session';
 export class ApiError extends Error {
-  constructor(public status: number, public code: string, message: string) { super(message); }
+  constructor(public status: number, public code: string, message: string, public usage?: Usage) { super(message); }
 }
 export function apiOrigin(raw: string): string {
   try {
@@ -13,7 +14,12 @@ const errorText = (status: number, code: string) => {
   if (status === 401) return '로그인 정보가 만료되었어요. 다시 로그인해 주세요.';
   if (status === 403) return '이 사업장에 접근할 수 없어요. 계정을 확인해 주세요.';
   if (code === 'RECEIVABLE_DUPLICATE') return '이미 등록된 거래처 코드 또는 청구 번호예요. 장부를 먼저 확인해 주세요.';
-  if (code === 'IDEMPOTENCY_CONFLICT') return '요청 내용이 이전 등록과 달라요. 장부를 확인한 뒤 새로 등록해 주세요.';
+  if (code === 'MATCHING_MONTHLY_LIMIT') return '이번 달 후보 생성 한도를 모두 사용했어요. 기존 결과 조회·연결·취소는 계속 이용할 수 있어요. 거절된 실행은 차감되지 않아요.';
+  if (code === 'MATCHING_MONTH_CHANGED') return '서버에서 이용 월이 바뀌었어요. 차감되지 않았어요. 사용량을 새로 읽고 같은 내용으로 다시 눌러 주세요.';
+  if (code === 'MATCHING_SOURCE_LIMIT') return '검토할 자료가 실행 상한을 넘었어요. 입금 기간을 줄여 주세요. 오래된 미수 청구도 상한에 포함돼요. 실패 실행은 차감되지 않아요.';
+  if (code === 'ALLOCATION_EXCEEDS_AVAILABLE') return '현재 잔액이 부족해 연결하지 못했어요. 초안을 보존했으니 현재 잔액을 다시 불러와 금액을 검토해 주세요.';
+  if (code === 'ALLOCATION_ALREADY_CANCELLED') return '이미 취소된 연결이에요. 현재 이력을 다시 불러와 주세요.';
+  if (code === 'IDEMPOTENCY_CONFLICT') return '같은 요청 키의 이전 내용과 달라요. 현재 이력을 조회하고 입력 내용을 확인해 주세요.';
   if (status === 400) return '입력한 내용을 확인해 주세요. 날짜, 금액과 필수 항목을 다시 살펴봐 주세요.';
   if (status === 409) return '이미 사용 중인 정보예요. 입력 내용과 기존 등록을 확인해 주세요.';
   if (status === 404) return '자료를 찾을 수 없어요. 목록을 새로고침해 주세요.';
@@ -46,11 +52,11 @@ export class Api {
       });
       this.session.assert(epoch);
       if (!response.ok) {
-        const error = await response.json().catch(() => ({})) as { code?: string };
+        const error = await response.json().catch(() => ({})) as { code?: string; usage?: Usage };
         this.session.assert(epoch);
         if (response.status === 401 && !options.anonymous) this.session.expire(epoch);
         const code = typeof error.code === 'string' ? error.code : '';
-        throw new ApiError(response.status, code, errorText(response.status, code));
+        throw new ApiError(response.status, code, errorText(response.status, code), error.usage);
       }
       if (response.status === 204) return undefined as T;
       const result = await response.json() as T;

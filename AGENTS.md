@@ -9,6 +9,7 @@
 - Mobile is a shared React Native/Expo/TypeScript app for iOS and Android; preserve backend API reuse for future web clients. Store purchase/subscriptions and public deployment require a later scope and explicit authorization.
 - Keep work feature-sized. Use light models for simple research/docs, Sol for ordinary coding, Astra only for complex work; run at most two child agents concurrently. Reuse prior analysis, preserve existing functionality, avoid broad refactors, and stop repeated unsuccessful retries to report the cause.
 - Each stage reports changed files, tests and remaining work briefly.
+- Prioritize a portfolio-ready end-to-end receivables demonstration. Apps in Toss is an additional delivery target: preserve Expo and the shared Java API, validate platform eligibility/SDK compatibility before adapting its client. Native store launch, paid tiers and AI remain later milestones.
 - Write Git commit messages in Korean. Commit and push feature-sized changes when authorized; do not treat this as permission for public deployment or environment publication.
 
 - Keep existing reconciliation APIs and PostgreSQL development/test isolation intact. Tests must use `reconciliation_test`, never `reconciliation_dev`; retain the existing isolation guards.

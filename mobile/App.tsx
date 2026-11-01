@@ -6,6 +6,7 @@ import { Api } from './src/api';
 import { SessionState, StaleSession } from './src/session';
 import { vault } from './src/vault';
 import { AuthScreen, blankDraft, createCommand, Registration } from './src/forms';
+import { MatchingScreen } from './src/matching-screen';
 import { AccountScreen, DetailScreen, HomeScreen, LedgerScreen } from './src/screens';
 import { Button, color, Heading, Icon, Loading, Notice, QueryError, s } from './src/ui';
 import { failText, type Workspace } from './src/data';
@@ -62,10 +63,11 @@ function Main() {
     {booting ? <Loading /> : (authenticated || sample) && currentTenant ? <WorkspaceView key={`${sample ? 'sample' : me?.accountId}:${currentTenant.id}`} w={{ api, prefix: `/tenants/${currentTenant.id}`, sample }} me={me} tenant={currentTenant} logout={logout} loggingOut={loggingOut} changeTenant={() => setTenant(null)} /> : <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={[s.scroll, { paddingBottom: 40 + insets.bottom }]}>{authenticated ? !me ? meError ? <QueryError text={meError} retry={loadMe} /> : <Loading /> : <><Heading title="사업장을 선택해 주세요" subtitle="현재 계정에 연결된 사업장이에요." />{me.tenants.length ? me.tenants.map(t => <Button key={t.id} title={t.name} secondary onPress={() => setTenant(t)} />) : <Notice>접근할 수 있는 사업장이 없어요. 계정의 소속을 확인해 주세요.</Notice>}</> : <AuthScreen api={api} accepted={accepted} initialMessage={message} sample={() => { setSample(true); setMessage(''); }} />}{authenticated ? <Button title="로그아웃" secondary onPress={logout} busy={loggingOut} /> : null}</ScrollView>}
   </KeyboardAvoidingView>;
 }
-type Tab = 'home' | 'ledger' | 'account';
+type Tab = 'home' | 'ledger' | 'matching' | 'account';
 function WorkspaceView({ w, me, tenant, logout, loggingOut, changeTenant }: { w: Workspace; me: Me | null; tenant: Tenant; logout(): void; loggingOut: boolean; changeTenant(): void }) {
   const insets = useSafeAreaInsets();
   const [tab, setTab] = useState<Tab>('home'), [form, setForm] = useState<Resource | null>(null), [detail, setDetail] = useState<string | null>(null);
+  const [matchingVisited, setMatchingVisited] = useState(false);
   const [refresh, setRefresh] = useState(0), [notice, setNotice] = useState(''), [mutationBusy, setMutationBusy] = useState(false);
   const [drafts, setDrafts] = useState<Record<Resource, Draft>>(() => ({ invoices: blankDraft(), payments: blankDraft(), counterparties: blankDraft() }));
   const commands = useRef({ invoices: createCommand(), payments: createCommand(), counterparties: createCommand() });
@@ -84,8 +86,9 @@ function WorkspaceView({ w, me, tenant, logout, loggingOut, changeTenant }: { w:
     {form || detail ? <View style={{ alignSelf: 'flex-start' }}><Button title="돌아가기" icon="arrow-back" quiet disabled={mutationBusy} onPress={back} /></View> : null}
     {notice ? <Notice>{notice}</Notice> : null}
     {w.sample ? <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center' }}><Icon name="eye-outline" size={17} /><Text style={[s.muted, { color: color.primary }]}>샘플 체험 · 합성 자료 · 기준일 2026.11.01</Text></View> : null}
-    {form ? <Registration key={form} w={w} resource={form} draft={drafts[form]} update={value => setDrafts(d => ({ ...d, [form]: value }))} command={commands.current[form]} registered={registered} changeResource={add} busyChange={setMutationBusy} /> : detail ? <DetailScreen w={w} id={detail} refresh={refresh} /> : tab === 'home' ? <HomeScreen w={w} refresh={refresh} add={add} open={open} all={() => setTab('ledger')} /> : tab === 'ledger' ? <LedgerScreen w={w} refresh={refresh} add={add} open={open} /> : <AccountScreen w={w} me={me} tenant={tenant} changeTenant={changeTenant} logout={logout} loggingOut={loggingOut} />}
-    </ScrollView><View style={[s.nav, { paddingBottom: Math.max(insets.bottom, 8) }]}><View style={s.navInner}>{(['home', 'ledger', 'account'] as Tab[]).map(t => <NavButton key={t} title={{ home: '홈', ledger: '장부', account: '계정' }[t]} icon={{ home: 'home-outline', ledger: 'albums-outline', account: 'person-outline' }[t] as React.ComponentProps<typeof Icon>['name']} selected={tab === t && !form && !detail} disabled={mutationBusy} onPress={() => { setTab(t); setForm(null); setDetail(null); }} />)}</View></View></>;
+    {form ? <Registration key={form} w={w} resource={form} draft={drafts[form]} update={value => setDrafts(d => ({ ...d, [form]: value }))} command={commands.current[form]} registered={registered} changeResource={add} busyChange={setMutationBusy} /> : detail ? <DetailScreen w={w} id={detail} refresh={refresh} /> : tab === 'home' ? <HomeScreen w={w} refresh={refresh} add={add} open={open} all={() => setTab('ledger')} /> : tab === 'ledger' ? <LedgerScreen w={w} refresh={refresh} add={add} open={open} /> : tab === 'matching' ? null : <AccountScreen refresh={refresh} w={w} me={me} tenant={tenant} changeTenant={changeTenant} logout={logout} loggingOut={loggingOut} />}
+    {matchingVisited ? <View style={{ display: tab === 'matching' && !form && !detail ? 'flex' : 'none', gap: 28 }}><MatchingScreen w={w} refresh={refresh} busyChange={setMutationBusy} changed={() => setRefresh(v => v + 1)} /></View> : null}
+    </ScrollView><View style={[s.nav, { paddingBottom: Math.max(insets.bottom, 8) }]}><View style={s.navInner}>{(['home', 'ledger', 'matching', 'account'] as Tab[]).map(t => <NavButton key={t} title={{ home: '홈', ledger: '장부', matching: '입금 연결', account: '계정' }[t]} icon={{ home: 'home-outline', ledger: 'albums-outline', matching: 'git-compare-outline', account: 'person-outline' }[t] as React.ComponentProps<typeof Icon>['name']} selected={tab === t && !form && !detail} disabled={mutationBusy} onPress={() => { if (t === 'matching') setMatchingVisited(true); setTab(t); setForm(null); setDetail(null); }} />)}</View></View></>;
 }
 function NavButton({ title, icon, selected, onPress, disabled }: { title: string; icon: React.ComponentProps<typeof Icon>['name']; selected: boolean; disabled: boolean; onPress(): void }) {
   const [focus, setFocus] = useState(false);

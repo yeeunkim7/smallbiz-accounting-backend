@@ -2,7 +2,7 @@
 
 청구·입금 등록과 수동 배분 다음 기능이다. V11은 tenant 소유 matching run과 결과 snapshot만 추가한다. 기존 V1~V10·등록 원본·배분/취소/감사 이력을 변경하지 않는다. 이 경로는 AI·기존 전역 조회 도구·은행/CSV import·배분 확정을 호출하지 않는다.
 
-**내부 사전 출시용 API다. 월별 사용량·요금제 quota는 아직 구현하지 않았다.** 아래 계산량 상한은 월별 무료 횟수나 유료 플랜 약속이 아니다. 다음 사용량 기능은 실행 승인·결과 저장과 같은 트랜잭션 경계에 결합해야 한다. 이 구현만으로 공개 FREE 출시가 완료된 것은 아니다.
+**내부 사전 출시용 API다.** V13의 [월별 성공 실행 사용량](RECEIVABLES_USAGE.md)이 현재 같은 트랜잭션에서 시행된다. 아래 계산량 상한은 별도 안전 경계이며 유료 플랜 약속이 아니다. 모바일·공개 운영 준비는 남아 있다.
 
 ## API
 
@@ -87,7 +87,7 @@ POST는 `Content-Type: application/json`과 필수 `Idempotency-Key`를 받는�
 
 키는 `(tenant, key)` 범위다. 엄격한 날짜를 정규화한 range의 SHA-256을 비교한다. 같은 키/같은 범위는 **최초 run ID와 저장 snapshot 그대로** 반환하며 다른 범위는 409 `IDEMPOTENCY_CONFLICT`다. JSON 필드 순서는 의미가 없다. 같은 키의 병렬 INSERT는 선행 트랜잭션을 기다리고 그 결과를 읽어 한 run만 commit한다.
 
-run의 RUNNING 행·현재 자료 읽기·SUCCESS snapshot 저장은 하나의 트랜잭션이며 실패하면 모두 rollback한다. 외부에서 관측 가능한 정상 결과는 SUCCESS뿐이다. 저장된 SUCCESS snapshot을 갱신하는 API는 없다. 동일 키의 재전송도 현재 권한은 다시 확인한다.
+run의 RUNNING 행·월 usage 잠금/승인·현재 자료 읽기·SUCCESS snapshot·usage event/counter 저장은 하나의 트랜잭션이며 실패하면 모두 rollback한다. 외부에서 관측 가능한 정상 결과는 SUCCESS뿐이다. 저장된 SUCCESS snapshot을 갱신하는 API는 없다. 동일 키의 재전송도 현재 권한은 다시 확인한다.
 
 **저장 후보는 이후 배분·취소·새 등록으로 오래될 수 있다.** detail/동일 키 재전송은 재계산하지 않는다. 새 실행 키로 갱신할 수 있고, 수동 확정은 기존 [배분 API](RECEIVABLES_ALLOCATION.md)를 통해 현재 양쪽 잔액을 부모 잠금 후 다시 검증한다. 오래된 suggestedAmount는 확정 권한이 아니다.
 
@@ -97,4 +97,6 @@ run의 RUNNING 행·현재 자료 읽기·SUCCESS snapshot 저장은 하나의 �
 
 전용 `reconciliation_test`와 개발 DB 거부 initializer, 실제 security filter를 사용하는 통합 테스트 14개를 추가했다. 정확한 금액/동일 이름/부분 후보, 빈 자료와 애매한 입금, 기간 양끝·오래된 청구·날짜 경고, 완납 제외와 취소 복원, 잘못된 저장 잔액 fail-closed, 정렬/top 표시 상한, Unicode 증거 보존, source 상한과 잘못된 설정, 입력/권한/직접 서비스 세션 재확인, 저장 결과 재전송/병렬 키 충돌/rollback, 배분 후 snapshot 불변과 기존 확정 재검증을 검사한다. AI 키와 스위치가 설정되어도 AI client/query 호출은 0인지 확인한다.
 
-테스트는 자기 tenant의 V11 → V10 → V9 → identity 순서로만 정리하며 cascade 삭제나 기존 테스트 cleanup 변경을 추가하지 않는다. 전체 회귀·패키징은 [작업 기록](AI_REVIEW_WORK.md)에 별도로 기록한다.
+V13 도입 후 테스트는 자기 tenant의 usage event/월 행 → V11 → V10 → V9 → identity 순서로 정리한다. 새 FK에 필요한 최소 matching cleanup 변경만 적용했다. 전체 회귀·패키징은 [작업 기록](AI_REVIEW_WORK.md)에 별도로 기록한다.
+
+V13 한도 소진은429 `MATCHING_MONTHLY_LIMIT`와 usage/reset/Retry-After, 월 잠금 대기 중 월 변경은409 `MATCHING_MONTH_CHANGED`다. 실패 키 재시도와 과거/동일 키 0차감 재생 계약은 [사용량 문서](RECEIVABLES_USAGE.md)를 따른다.

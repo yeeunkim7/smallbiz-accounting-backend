@@ -9,6 +9,7 @@
 - Mobile is a shared React Native/Expo/TypeScript app for iOS and Android; preserve backend API reuse for future web clients. Store purchase/subscriptions and public deployment require a later scope and explicit authorization.
 - Keep work feature-sized. Use light models for simple research/docs, Sol for ordinary coding, Astra only for complex work; run at most two child agents concurrently. Reuse prior analysis, preserve existing functionality, avoid broad refactors, and stop repeated unsuccessful retries to report the cause.
 - Each stage reports changed files, tests and remaining work briefly.
+- Write Git commit messages in Korean. Commit and push feature-sized changes when authorized; do not treat this as permission for public deployment or environment publication.
 
 - Keep existing reconciliation APIs and PostgreSQL development/test isolation intact. Tests must use `reconciliation_test`, never `reconciliation_dev`; retain the existing isolation guards.
 - Reuse Java reconciliation calculations. AI receives an explicit allowlist of read-only queries only; it must never upload/change transactions or save review completion.

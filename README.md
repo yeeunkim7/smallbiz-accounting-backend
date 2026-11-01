@@ -1,4 +1,4 @@
-> 개발 방향 갱신: 소규모 사업자의 **미수금·입금 확인 FREE MVP**를 우선 개발합니다. 인증·청구/입금 등록·수동 배분·규칙 후보·은행 CSV API를 구현했으며 모바일·월별 사용량 한도는 아직 없습니다. 무료 서비스는 미출시입니다. 기존 대사와 AI 자산은 보존하며 AI는 향후 PRO로 분리합니다. [개발 계획](docs/RECEIVABLES_FREE_MVP_PLAN.md) · [tenant 은행 CSV 계약](docs/RECEIVABLES_IMPORT.md)
+> 개발 방향 갱신: 소규모 사업자의 **미수금·입금 확인 FREE MVP**를 우선 개발합니다. 인증·청구/입금 등록·수동 배분·규칙 후보·은행 CSV API·월별 성공 실행 한도를 구현했습니다. 모바일은 아직 없습니다. 무료 서비스는 미출시입니다. 기존 대사와 AI 자산은 보존하며 AI는 향후 PRO로 분리합니다. [개발 계획](docs/RECEIVABLES_FREE_MVP_PLAN.md) · [tenant 은행 CSV 계약](docs/RECEIVABLES_IMPORT.md)
 
 # 입출금 대사 시스템
 
@@ -289,4 +289,4 @@ FastAPI 실험 코드는 루트의 SQLite `accounting.db`를 사용하며, Java 
 
 ## 규칙 기반 검토 후보
 
-현재 미수금·미할당 입금의 금액과 이름을 비교해 검토 후보를 만들고 조회 시점의 근거를 저장합니다. 불일치 경고를 표시하며 자동 배분하거나 AI를 호출하지 않습니다. [후보 API 계약](docs/RECEIVABLES_MATCHING.md). CSV 가져오기·월별 한도·모바일은 아직 후속 범위입니다.
+현재 미수금·미할당 입금의 금액과 이름을 비교해 검토 후보를 만들고 조회 시점의 근거를 저장합니다. 불일치 경고를 표시하며 자동 배분하거나 AI를 호출하지 않습니다. [후보 API 계약](docs/RECEIVABLES_MATCHING.md). CSV 가져오기와 [월별 성공 실행 한도](docs/RECEIVABLES_USAGE.md)를 구현했으며 모바일은 후속 범위입니다.

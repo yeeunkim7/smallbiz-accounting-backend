@@ -40,11 +40,12 @@ public class MatchingService {
     private final Clock clock;
     private final ObjectMapper mapper;
     private final MatchingPolicy policy;
+    private final UsageService usage;
     private final TransactionTemplate transaction;
 
     public MatchingService(JdbcTemplate jdbc, TenantAccess tenants, AuthService auth, Clock clock, ObjectMapper mapper,
-            MatchingPolicy policy, PlatformTransactionManager transactionManager) {
-        this.jdbc = jdbc; this.tenants = tenants; this.auth = auth; this.clock = clock; this.mapper = mapper; this.policy = policy;
+            MatchingPolicy policy, UsageService usage, PlatformTransactionManager transactionManager) {
+        this.jdbc = jdbc; this.tenants = tenants; this.auth = auth; this.clock = clock; this.mapper = mapper; this.policy = policy; this.usage = usage;
         transaction = new TransactionTemplate(transactionManager);
         // Duplicate INSERT must see a preceding transaction's committed result in the next statement.
         transaction.setIsolationLevel(TransactionDefinition.ISOLATION_READ_COMMITTED);
@@ -70,6 +71,7 @@ public class MatchingService {
                             return snapshot(rs);
                         }, tenant, requestKey);
             }
+            UsageService.Ticket ticket = usage.approve(tenant);
             Sources sources = sources(tenant, range);
             var results = sources.payments().stream().map(payment -> suggestions(payment, sources.invoices())).toList();
             String presence = sources.payments().isEmpty()
@@ -79,10 +81,11 @@ public class MatchingService {
                     new SourceCounts(sources.payments().size(), sources.invoices().size()), presence, policy.topPerPayment(),
                     sources.invoices(), results);
             int saved = jdbc.update("""
-                    UPDATE receivable_matching_run SET status='SUCCESS',result_json=CAST(? AS jsonb)
+                    UPDATE receivable_matching_run SET status='SUCCESS',result_json=CAST(? AS jsonb),usage_month=?
                     WHERE tenant_id=? AND id=? AND status='RUNNING'
-                    """, mapper.writeValueAsString(result), tenant, id);
+                    """, mapper.writeValueAsString(result), ticket.month(), tenant, id);
             if (saved != 1) throw MatchingException.storage();
+            usage.complete(tenant, id, ticket);
             return result;
         });
     }

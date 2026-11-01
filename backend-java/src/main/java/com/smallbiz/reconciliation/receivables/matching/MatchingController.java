@@ -22,6 +22,12 @@ public class MatchingController {
     @GetMapping
     public MatchingService.Page list(@PathVariable UUID tenantId, @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) { return service.list(tenantId, page, size); }
+    @ExceptionHandler(UsageException.class)
+    public ResponseEntity<Map<String, Object>> exhausted(UsageException ex) {
+        return ResponseEntity.status(429).header("Retry-After", Long.toString(ex.retryAfter))
+                .body(Map.of("code", "MATCHING_MONTHLY_LIMIT", "message", ex.getMessage(), "usage", ex.usage,
+                        "retryAfterSeconds", ex.retryAfter));
+    }
     @ExceptionHandler(MatchingException.class)
     public ResponseEntity<Map<String, String>> error(MatchingException ex) {
         return ResponseEntity.status(ex.status).body(Map.of("code", ex.code, "message", ex.getMessage()));

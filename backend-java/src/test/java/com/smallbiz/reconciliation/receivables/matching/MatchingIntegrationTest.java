@@ -55,7 +55,7 @@ class MatchingIntegrationTest {
         try { verifyNoInteractions(ai, queries); }
         finally {
             for (Owner owner : owners) {
-                for (String table : List.of("receivable_matching_run", "receivable_allocation_command", "receivable_allocation_audit",
+                for (String table : List.of("receivable_matching_usage_event", "receivable_monthly_usage", "receivable_matching_run", "receivable_allocation_command", "receivable_allocation_audit",
                         "receivable_allocation_cancellation", "receivable_allocation_line", "receivable_allocation_batch", "receivable_registration_request",
                         "receivable_invoice", "receivable_payment", "receivable_counterparty"))
                     jdbc.update("DELETE FROM " + table + " WHERE tenant_id=?", owner.tenant());

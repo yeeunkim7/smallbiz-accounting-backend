@@ -39,7 +39,7 @@
 | payment_allocation | tenant, payment_id, invoice_id, positive amount, confirmation_id, reversed_by/reversed_at. 활성 할당 합계만 잔액에 반영. 변경은 기존 행 덮어쓰기 대신 reversal+신규행을 한 트랜잭션으로 기록 |
 | confirmation_command | tenant, idempotency_key, canonical payload hash, actor, operation, status/result, created_at. `(tenant, operation, key)` 유니크. 결과 유실 재시도·동시요청에서 동일 결과 보장; 결과에 할당 및 감사 ID 저장 |
 | reconciliation_audit | tenant, actor, event_type, aggregate IDs/versions, before/after 또는 추가/반전 행 ID, reason, command_id, occurred_at. 확정·변경·취소·원본보정·거래처/기한변경. 앱 계정의 임의 UPDATE/DELETE를 허용하지 않음 |
-| candidate_run / candidate_result | tenant, operation, idempotency_key, canonical payload hash, 선택 범위·대상 version, rule_version, status, 승인 business_month, policy_version, lease/fencing token, 결과. `(tenant, operation, key)` 유니크. 정상 완료 결과를 영구 저장해 중복 요청에 재사용 |
+| candidate_run / candidate_result | tenant, operation, idempotency_key, canonical payload hash, 선택 범위·대상 version, rule_version, status, 승인 usage_month, 결과. 승인 plan/policy_version/limit은 V13 usage_event에 보존한다. `(tenant, operation, key)` 유니크. 정상 완료 결과를 영구 저장해 중복 요청에 재사용 |
 | tenant_month_usage / usage_event | tenant, business_month, metric, success_count, reserved_count, policy_version. event는 tenant/run/metric 유니크와 승인 월. 정상 완료 run별 성공 증빙; payment 또는 allocation과 과금 연결하지 않음 |
 | source_ownership / legacy_source_link | 기존 원본을 연결할 때만 필요. 검증된 tenant+account+upload 소유권 및 감사, tenant payment↔legacy bank ID 일대일. P0 신규 tenant 업로드만 제공하면 legacy 연결은 보류 가능 |
 
@@ -68,18 +68,15 @@ PostgreSQL READ COMMITTED + 명시 행잠금을 기본으로 한다. SUM 제약�
 4. 요청 version, tenant 소유권, 활성상태, 통화, 현재 가용잔액, 반전 여부를 DB에서 재검증. 후보의 오래된 금액을 믿지 않는다. 현행 활성할당을 제외/반전한 최종 상태로 양쪽 합계 불변식을 확인한다.
 5. 할당/reversal, audit, command 결과를 같은 트랜잭션으로 commit한다. 응답 유실 재시도는 기존 결과를 반환한다. 실패 시 전부 rollback하고 확정·변경·취소의 사용량 차감은 항상 0이다.
 
-## 규칙후보 run의 성공 사용량·예약·장애 복구
+## 규칙후보 run의 성공 사용량·동기 트랜잭션
 
-월 10회는 설정 가능한 가설이다. Java 메모리 Semaphore나 별도 비원자 counter로 제어하지 않으며, 멀티 인스턴스에서도 DB가 기준이다. 작업승인 DB 시각을 사업체 시간대(초기 Asia/Seoul)로 변환한 business_month와 policy version을 run에 고정한다. 기기 시계·완료시각·재요청 날짜로 월을 바꾸지 않는다.
+현재 V13 구현은 이전 비동기 예약·worker·lease/fencing 제안을 bounded 동기식 실행에 맞춰 대체한다. [현재 사용량 계약](RECEIVABLES_USAGE.md)이 기준이다. 비동기 worker나 예약 회수 기능이 구현됐다는 뜻이 아니다.
 
-1. **승인 트랜잭션:** 인증·권한·run 요청 검증 후 `(tenant, operation, Idempotency-Key)`와 canonical payload hash로 run을 확보한다. 같은 키/다른 payload는 409, 완료된 같은 요청은 결과 반환, 실행 중인 같은 요청은 같은 run 상태를 반환한다. 다른 키의 명시적 새 실행은 별개 run이다. 요청 범위가 같다고 완료 run을 임의 덮어쓰지 않는다.
-2. 공통 잠금 순서는 **run 행 → 해당 월 usage 행**이다. usage row는 unique+upsert로 생성한 뒤 잠근다. `success_count + reserved_count < configured_limit`일 때만 예약을 하나 늘리고 승인 월·lease deadline·단조증가 fencing token을 run에 저장한다. 예약 후에는 `success_count + reserved_count <= limit`을 유지한다. 승인실패는 예약 0·성공차감 0이다.
-3. worker는 tenant 범위 내 제한된 규칙계산만 수행한다. provider/AI 호출은 없다. lease 갱신·재시작은 현재 token을 조건으로 하며 재시작할 때 token을 증가시킨다. 이 계산은 payment/invoice에 할당을 쓰거나 긴 부모락을 잡지 않는다.
-4. **성공 트랜잭션:** 같은 run→월 usage 순서로 잠그고 현재 token·실행상태·유효 lease를 검사한다. candidate_result 저장, run SUCCESS, 해당 승인 월 reserved_count −1 및 success_count +1, run별 유니크 usage_event를 한 번에 commit한다. 결과 저장 실패는 성공으로 차감하지 않는다. 결과의 대상 version은 수동확정에서 다시 검사한다.
-5. **실패/회수 트랜잭션:** 동일 잠금 순서에서 현재 token·상태를 조건으로 FAILED/EXPIRED 처리하고 예약을 한 번만 반환한다. 성공수는 증가시키지 않는다. lease가 만료된 worker의 늦은 성공은 token/상태 조건으로 거절한다. 예약회수 후 재시도는 같은 run의 새 token으로 한도를 재확인·예약한다. 완료된 run은 재예약하지 않는다.
-6. 월말을 넘어 완료하거나 같은 키로 재시도해도 최초 승인 월을 유지한다. 회수 후 같은 run을 재승인하는 경우에도 그 월과 정책을 유지한다. 갱신 정책이 이미 존재하는 예약·완료 결과를 소급 변경하지 않도록 한다.
+run/key 확보 → 월 usage upsert/행 잠금 → DB 시각·권한·서버 plan/정책 재확인 → bounded 규칙 계산 → SUCCESS snapshot·run 승인 월·고유 event·counter를 한 READ COMMITTED 트랜잭션에서 commit한다. 잠금 순서는 run → 월 usage다. 실패/연결 중단은 전부 rollback하므로 durable reservation이나 영구 누수가 없다. 향후 비동기 전환 시에만 별도 lease/fencing 설계를 재검토한다.
 
-후보 run의 실패·미승인·quota초과는 성공 차감 0이며 임시 예약만 회수한다. import 실패·중복, 수동확정/취소, 조회·저장된 결과 새로고침은 이 metric을 변경하지 않는다. allocation audit와 run 성공 usage_event는 서로 다른 사실이므로 한 쪽의 성공을 다른 쪽으로 추정하지 않는다.
+월은 PostgreSQL 시각을 Asia/Seoul로 변환한다. 월 행 대기 중 월 변경은 409/전체 rollback 후 같은 키 재시도다. 승인 뒤 완료가 다음 달이어도 고정된 승인 월에 기록한다. 같은 키/같은 요청은 최초 결과 재생, 다른 요청은 quota 검사 전409이며 과거 V13 이전 SUCCESS는 소급 차감하지 않는다. 결과가 저장된 빈 자료/0후보 SUCCESS도1회다. import·수동 배분/취소·조회는0회이며 quota 소진이 이 기능을 막지 않는다.
+
+FREE 기본10은 서버 설정 가설이며 STANDARD/PRO 기본0은 명시적 정책 전fail-closed다. GET은 서버 현재 plan/policyVersion/limit, 실제completed, remaining=max0, 현재월/timezone/resetAt을 제공한다. 정책 축소 후completed가 현재limit보다 클 수 있어도 기존 성공을 지우지 않는다.
 
 ## 업로드 중복·기존 원본 연결·tenant 보안
 
@@ -111,10 +108,10 @@ PostgreSQL READ COMMITTED + 명시 행잠금을 기본으로 한다. SUM 제약�
 | 부분 40+60, 입금150→청구100+50, 다대다, 초과입금 잔액, 정확한 만기경계 | 양쪽 잔액 불변식, 연체/완납 파생값 정확 |
 | 동일 payment 동시확정, 동일 invoice 동시확정, 반대 순서 다대다 요청 | 과할당 없음; 순서락 또는 명시적 version 충돌; deadlock 발생 시 bounded 재시도 |
 | 수동확정 같은 키·같은 payload 동시 retry/응답유실, 다른 payload 재사용 | 동일 결과 또는 409; 할당·audit 중복 없음; quota 변화 0 |
-| 월한도 마지막 1칸 서로 다른 run 동시승인, 신규 usage row 동시생성 | success+reserved 한도 유지; 한 run만 예약 가능 |
+| 월한도 마지막 1칸 서로 다른 run 동시승인, 신규 usage row 동시생성 | 성공 counter 한도 유지; 남은 한 칸은 한 run만 성공 |
 | 같은 run 동시 retry/응답유실, 같은 키 다른 payload, 정상 0건 후보결과 | 결과·usage_event·성공수 1회 또는 409; 결과 저장된 정상 run은 1회 |
-| worker 중단·lease만료·예약회수·늦은 worker 완료·새 token 재실행 | 예약 1회 반환, 낡은 token 성공 거부, 중복 완료/영구 예약 누수 없음 |
-| 월말 승인→다음달 완료/재시도, 실패 후 같은 run 재예약 | 최초 승인 business_month와 policy 유지, 다른 월 counter 오염 없음 |
+| snapshot/event/counter 저장 실패·연결 중단 | 단일 트랜잭션 전체 rollback; 임시 run/새 월 행/사용 키/영구 예약 누수 없음 |
+| 월 행 잠금 대기 중 월 변경, 승인 후 다음달 완료/재전송 | 대기 중 변경은409/rollback·같은 키 재시도; 승인 후에는 최초 usage_month 유지 |
 | run 결과/usage 저장 각 지점 rollback, 저장된 후보 조회, import 실패/중복 | 성공 결과·counter·event 원자성; 실패 성공차감 0; 조회/import 차감 0 |
 | 수동확정 stale 후보/권한실패 및 allocation/audit 저장 각 지점 rollback | 배분 불변식 유지, audit/command 원자성; quota 경로 호출 없음 |
 | 확정취소→재확정/다음달 재확정, 변경 시 기존 대상+신규대상 동시 충돌, quota 소진 후 수동확정 | 반전이력·원금 보존; 모든 수동배분 차감 0; quota 소진이 배분을 차단하지 않음 |

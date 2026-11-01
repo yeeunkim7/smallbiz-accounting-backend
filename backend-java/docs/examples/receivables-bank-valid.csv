@@ -1,0 +1,4 @@
+booked_date,direction,amount,counterparty_name,description,source_line_id
+2026-11-01,IN,40000,가상 거래처,첫 번째 부분 입금,SYNTHETIC-IN-001
+2026-11-01,IN,40000,가상 거래처,같은 날짜와 금액의 별도 입금,SYNTHETIC-IN-002
+2026-11-02,OUT,10000,가상 출금처,입금으로 등록하지 않는 출금,SYNTHETIC-OUT-001

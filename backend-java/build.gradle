@@ -36,4 +36,6 @@ dependencies {
 
 tasks.named('test') {
 	useJUnitPlatform()
+	// Automated tests use mocks; never inherit a real provider key from the host.
+	environment 'AI_API_KEY', ''
 }

@@ -1,0 +1,20 @@
+{
+  "checks": [
+    "actual app: summary, no-data distinction, source rows, uploads, keyboard focus, desktop overflow",
+    "actual app: keyboard tabs and IN/OUT source filter",
+    "actual app: empty date and first-upload guidance",
+    "actual app: 390px responsive layout without page overflow; source type accessible in mobile details",
+    "fixture only: date → AI result → citation focus; untrusted output remains text",
+    "fixture only: upstream error and retry preserve summary",
+    "fixture only: date change cancels/hides stale AI response",
+    "fixture only: summary error and successful retry; example CSV links available",
+    "fixture only: returned Java summary replaces older page amounts; originals and uploads refresh before displaying review",
+    "fixture only: progress wording does not promise cancellation of server processing or API charges",
+    "fixture only: AI_DATA_CHANGED 409 requires a fresh day query and cannot automatically retry a paid review",
+    "fixture only: changing date resets both review text and the previous status color"
+  ],
+  "passed": 12,
+  "browser": "system Chromium via Playwright",
+  "actualModelCalled": false,
+  "consoleErrors": []
+}

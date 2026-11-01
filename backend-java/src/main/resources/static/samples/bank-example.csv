@@ -1,0 +1,2 @@
+booked_date,direction,amount,counterparty_name,description,source_line_id
+2026-10-31,IN,80000,예제 거래처,예제 입금,DEMO-BANK-20261031-001

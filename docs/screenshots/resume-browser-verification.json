@@ -1,0 +1,16 @@
+{
+  "checks": [
+    "actual app: summary, no-data distinction, source rows, uploads, keyboard focus, desktop overflow",
+    "actual app: keyboard tabs and IN/OUT source filter",
+    "actual app: empty date and first-upload guidance",
+    "actual app: 390px responsive layout without page overflow",
+    "fixture only: date → AI result → citation focus; untrusted output remains text",
+    "fixture only: upstream error and retry preserve summary",
+    "fixture only: date change cancels/hides stale AI response",
+    "fixture only: summary error and successful retry; example CSV links available"
+  ],
+  "passed": 8,
+  "browser": "system Chromium via Playwright",
+  "actualModelCalled": false,
+  "consoleErrors": []
+}

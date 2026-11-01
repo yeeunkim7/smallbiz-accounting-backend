@@ -89,3 +89,7 @@ Final auth verification: 104 tests passed, 0 failures/errors/skips (16 XML repor
 ## Receivables registration — feature 1
 
 Added tenant-owned manual counterparties, invoices and payments with V9 only. Required idempotency keys, strict KRW decimal-string amounts, validated dates, membership checks, composite tenant FKs and stable paginated reads. No legacy financial rows reassigned; no allocation, balance, matching, quota or AI execution added. New14 integration tests plus existing104: full118 passed, failures/errors/skips0, XML17; build/JAR successful. Log: `/workspace/.local/run/registration-full-build.log`. Independent code review found no unresolved P1/P2. See RECEIVABLES_REGISTRATION.md and receivables-registration-review.md.
+
+## Manual allocation — feature 2
+
+Added V10 immutable batches, lines, cancellations, audit and idempotency commands. Parent lock ordering prevents double allocation; partial and bundled payments are supported without changing registered amounts. Current outstanding/unallocated/overdue amounts use exact arithmetic and string transport. asOf is an overdue cutoff, not a historical ledger snapshot. Correction is explicit cancellation followed by a new confirmation; no automatic matching, AI or usage charging. New17 + registration14 targeted tests passed, then full135 (XML18) passed with0 failures/errors/skips; build/JAR successful. Independent review found no unresolved P1/P2. Log `/workspace/.local/run/allocation-full-build.log`; details RECEIVABLES_ALLOCATION.md.

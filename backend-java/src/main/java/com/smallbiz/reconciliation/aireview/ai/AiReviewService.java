@@ -10,6 +10,7 @@ import java.util.Set;
 import java.util.concurrent.Semaphore;
 
 import org.springframework.stereotype.Service;
+import com.smallbiz.reconciliation.account.AiAccessPolicy;
 import com.smallbiz.reconciliation.aireview.query.ReadOnlyReviewQueries;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
@@ -38,22 +39,25 @@ public class AiReviewService {
             Monetary facts will be replaced by authoritative server summary statements; focus on grounded hypotheses and human follow-up.
             """;
 
+    private final AiAccessPolicy accessPolicy;
     private final ReadOnlyReviewQueries queries;
     private final AiCompletionClient client;
     private final ObjectMapper mapper;
     private final Semaphore slots = new Semaphore(2);
 
-    public AiReviewService(ReadOnlyReviewQueries queries, AiCompletionClient client, ObjectMapper mapper) {
+    public AiReviewService(ReadOnlyReviewQueries queries, AiCompletionClient client, ObjectMapper mapper, AiAccessPolicy accessPolicy) {
+        this.accessPolicy = accessPolicy;
         this.queries = queries;
         this.client = client;
         this.mapper = mapper;
     }
 
     public Map<String, Object> capabilities() {
-        return Map.of("configured", client.configured(), "model", client.model());
+        return Map.of("configured", false, "model", "", "reason", "Tenant-owned AI tools are not available.");
     }
 
     public AiReviewResponse review(String date) {
+        accessPolicy.requireReviewAccess();
         if (!client.configured()) throw new AiReviewException("AI_NOT_CONFIGURED", 503,
                 "AI 검토를 준비하고 있습니다. 잠시 후 다시 시도해 주세요.");
         if (!slots.tryAcquire()) throw new AiReviewException("AI_BUSY", 429,
@@ -63,6 +67,7 @@ public class AiReviewService {
     }
 
     private AiReviewResponse execute(String date) {
+        accessPolicy.requireReviewAccess();
         JsonNode initial = mapper.valueToTree(queries.summary(date));
         Session session = new Session(date, initial);
         List<Object> messages = new ArrayList<>();
@@ -72,6 +77,7 @@ public class AiReviewService {
         int calls = 0;
         long deadline = System.nanoTime() + 100_000_000_000L;
         for (int round = 0; round < MAX_MODEL_REQUESTS; round++) {
+            accessPolicy.requireReviewAccess();
             if (System.nanoTime() > deadline) throw new AiReviewException("AI_TIMEOUT", 504,
                     "AI 검토 시간이 길어지고 있습니다. 다시 시도해 주세요.");
             Map<String,Object> request = new LinkedHashMap<>();
@@ -115,6 +121,7 @@ public class AiReviewService {
                 statements(result.path("facts"), session.evidence.keySet(), true);
                 List<AiReviewResponse.Statement> causes = statements(result.path("possibleCauses"), session.evidence.keySet(), false);
                 List<AiReviewResponse.Statement> checks = statements(result.path("checks"), session.evidence.keySet(), false);
+                accessPolicy.requireReviewAccess();
                 JsonNode current = mapper.valueToTree(queries.summary(date));
                 if (!initial.equals(current)) throw new AiReviewException("AI_DATA_CHANGED", 409,
                         "검토 중 원본 또는 검토 상태가 바뀌었습니다. 하루 자료를 다시 조회해 주세요.");
@@ -187,6 +194,7 @@ public class AiReviewService {
         List<String> idsForLastCall = List.of();
         Session(String date, JsonNode initial) { this.date = date; this.initial = initial; }
         JsonNode invoke(String name, Map<String,Object> args) {
+            accessPolicy.requireReviewAccess();
             if (!TOOLS.contains(name)) throw invalid();
             Set<String> allowed = name.equals("get_daily_summary") ? Set.of("date")
                     : name.equals("list_related_uploads") ? Set.of("date", "page", "size")

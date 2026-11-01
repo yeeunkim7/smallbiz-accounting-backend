@@ -2,7 +2,7 @@
 
 Updated: 2026-11-01 (Asia/Seoul).
 
-> Product direction superseded on 2026-11-01: see [FREE receivables MVP plan](RECEIVABLES_FREE_MVP_PLAN.md). This file preserves the historical AI work. AI is a future PRO asset; actual-model validation is not a FREE launch prerequisite. Current priority is tenant/authentication, exact receivables allocation, success-only usage, then shared Expo mobile. Existing AI endpoints are not yet protected by plan entitlement; FREE zero-call guarantees remain a release gate.
+> Product direction superseded on 2026-11-01: see [FREE receivables MVP plan](RECEIVABLES_FREE_MVP_PLAN.md). This file preserves the historical AI work. AI is a future PRO asset; actual-model validation is not a FREE launch prerequisite. Current priority is tenant/authentication, exact receivables allocation, success-only usage, then shared Expo mobile. Account/tenant authentication and FREE/STANDARD AI denial are now implemented at HTTP, service and provider boundaries. PRO remains denied until tenant-owned AI tools exist; overall FREE receivables functionality is still under development.
 
 ## Objective and scope
 
@@ -79,3 +79,9 @@ Fresh current-environment UX and independent-review agents completed the interru
 ## Receivables P0 baseline
 
 Latest checkout retained the existing uncommitted work at HEAD580adf5. JDK/javac21.0.12.1, PostgreSQL17.11, dev/test databases and FlywayV1–V7 were verified. On2026-11-01 the existing88 tests were rerun: all passed, failures/errors/skips0, XML12. Development vendor/business/bank/upload counts were1/1/1/2 before and after (row-count evidence only). No new migration, financial-source edit, real model call, Expo project, commit/push or publication was performed. P0 planning files: RECEIVABLES_FREE_MVP_PLAN.md, receivables-domain-plan.md, receivables-market-plan.md and receivables-mobile-plan.md.
+
+## Account foundation implementation
+
+The previous work was committed as 29c7cc9 before new edits. Added standard Spring Security, BCrypt passwords, hashed opaque sessions with expiry/revocation, atomic FREE signup, tenant membership checks, default legacy denial and explicit anonymous legacy-dev fixture. V8 adds identity tables only and development financial counts remain 1/1/1/2. Existing AI entry/service/provider paths fail closed, including PRO until tenant tools exist. Public account operations still require rate limiting, recovery/deletion policy and deployment TLS. See AUTH_FOUNDATION.md and auth-security-review.md. No actual model call, push or deployment.
+
+Final auth verification: 104 tests passed, 0 failures/errors/skips (16 XML reports); JAR packaging succeeded. Local HTTP default-denial smoke passed. V8 applied successfully; development financial counts remained unchanged. No actual model calls, push or public deployment.

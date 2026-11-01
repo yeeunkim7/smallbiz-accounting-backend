@@ -33,7 +33,7 @@ class AiReviewServiceTest {
     @BeforeEach void setup() {
         queries = mock(ReadOnlyReviewQueries.class);
         client = new FakeClient();
-        service = new AiReviewService(queries, client, mapper);
+        service = new AiReviewService(queries, client, mapper, mock(com.smallbiz.reconciliation.account.AiAccessPolicy.class));
         summary = new DailySummaryResponse(LocalDate.parse(DATE), ReviewStatus.UNREVIEWED, "NOT_EVALUATED",
                 new DirectionSummary("12345", "12345", "0", 1, 1, "BOTH", "TOTAL_EQUAL"),
                 new DirectionSummary("0", "0", "0", 0, 0, "NONE", "NO_DATA"));
@@ -65,6 +65,27 @@ class AiReviewServiceTest {
         verify(queries).business(DATE,DATE,null,0,20);
         verify(queries).bank(DATE,DATE,null,0,20);
         verify(queries).uploads(DATE,DATE,0,20);
+        verifyNoMoreInteractions(queries);
+    }
+
+    @Test void revocationAfterFirstCompletionStopsBeforeToolQueryOrNextCompletion() {
+        var revoked = new java.util.concurrent.atomic.AtomicBoolean();
+        var policy = mock(com.smallbiz.reconciliation.account.AiAccessPolicy.class);
+        doAnswer(invocation -> {
+            if (revoked.get()) throw com.smallbiz.reconciliation.account.AccountException.unauthenticated();
+            return null;
+        }).when(policy).requireReviewAccess();
+        var completion = mock(AiCompletionClient.class);
+        when(completion.configured()).thenReturn(true);
+        when(completion.model()).thenReturn("test-model");
+        when(completion.complete(anyMap())).thenAnswer(invocation -> {
+            revoked.set(true);
+            return allTools();
+        });
+        var protectedService = new AiReviewService(queries, completion, mapper, policy);
+        assertThrows(com.smallbiz.reconciliation.account.AccountException.class, () -> protectedService.review(DATE));
+        verify(completion, times(1)).complete(anyMap());
+        verify(queries, times(1)).summary(DATE);
         verifyNoMoreInteractions(queries);
     }
 

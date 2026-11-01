@@ -274,3 +274,7 @@ FastAPI 실험 코드는 루트의 SQLite `accounting.db`를 사용하며, Java 
 `/ai-review.html`에서 날짜별 입출금 요약과 원본·관련 업로드를 확인할 수 있습니다. AI에는 네 조회 도구만 제공하며 거래 변경과 검토 완료 저장은 하지 않습니다. 실제 모델 호출은 별도 키·네트워크·비용 확인 후 검증해야 합니다.
 
 [실행·검증 안내](docs/ai-review-running.md) · [작업 상태](docs/AI_REVIEW_WORK.md) · [시장 조사](docs/ai-review-research.md) · [화면 설계](docs/ai-review-design.md)
+
+## 계정·사업체 보안 기반
+
+회원가입·로그인·로그아웃과 사업체 멤버십 API를 추가했습니다. 기본 실행에서는 기존 전역 금융 API 접근을 차단하며, 과거 화면의 익명 개발 모드는 명시적 legacy-dev 설정으로만 사용합니다. FREE/STANDARD는 AI를 호출하지 못하고 PRO도 tenant 전용 도구 준비 전까지 차단합니다. [인증기반안내](docs/AUTH_FOUNDATION.md). 청구·입금 배분·이용량·모바일은 다음 기능 단위입니다.

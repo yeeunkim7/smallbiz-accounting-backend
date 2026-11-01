@@ -21,7 +21,7 @@ import com.smallbiz.reconciliation.vendor.TestDatabaseIsolation;
 
 @SpringBootTest
 @AutoConfigureMockMvc
-@ActiveProfiles("test")
+@ActiveProfiles({"test", "legacy-dev"})
 @ContextConfiguration(initializers = RejectDevelopmentDatabaseInitializer.class)
 class ReadOnlyReviewQueriesIntegrationTest {
     @Autowired JdbcTemplate jdbc;

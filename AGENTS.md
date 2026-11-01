@@ -3,7 +3,7 @@
 ## Current product direction
 
 - The canonical roadmap is `docs/RECEIVABLES_FREE_MVP_PLAN.md`: build an AI-free receivables/payment-confirmation FREE MVP first. Preserve legacy reconciliation and reserve the existing read-only AI assets for PRO.
-- FREE and STANDARD must never reach a model client. Before any FREE release, protect all AI entry points, including legacy routes, with server authentication, tenant entitlement and a fail-closed AI feature gate. Existing UI hiding/key absence is insufficient; this protection is planned, not yet implemented.
+- FREE and STANDARD must never reach a model client. Before any FREE release, protect all AI entry points, including legacy routes, with server authentication, tenant entitlement and a fail-closed AI feature gate. Existing UI hiding/key absence is insufficient. The account/tenant boundary and fail-closed AI service/provider guard are implemented; PRO remains disabled until tenant-owned AI tools exist.
 - Do not reinterpret business_event/daily_review as invoices or payment allocations. Add tenant-owned receivables models through reviewed additive Flyway migrations; do not auto-assign legacy global data to a tenant.
 - Prices and monthly limits are policy hypotheses, not hardcoded business rules. Successful-run metering must be atomic and idempotent; failed, duplicated and in-flight work must not inflate completed usage.
 - Mobile is a shared React Native/Expo/TypeScript app for iOS and Android; preserve backend API reuse for future web clients. Store purchase/subscriptions and public deployment require a later scope and explicit authorization.

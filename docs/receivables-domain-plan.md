@@ -1,6 +1,6 @@
 # 미수금·입금누락 P0 도메인 및 DB 계획
 
-2026-11-01. 계획만 작성했으며 코드·기존 migration·DB를 변경하지 않았다. 기준 HEAD는 `580adf5`; 미커밋 AI 구현을 현재 코드로 함께 확인하고 보존한다. Java 21 / Spring Boot / PostgreSQL / Flyway / Gradle를 유지한다. 기존 대사 API 계약과 `reconciliation_test` 격리를 유지한다.
+2026-11-01 P0 분석 이력. 이 문서 작성 당시에는 코드·기존 migration·DB를 변경하지 않았다. 이후 계정·tenant·AI 차단 경계는 AUTH_FOUNDATION.md와 V8로 구현됐으므로 아래의 당시 무가드 분석은 현재 상태와 구분한다. 기준 HEAD는 `580adf5`; 미커밋 AI 구현을 현재 코드로 함께 확인하고 보존한다. Java 21 / Spring Boot / PostgreSQL / Flyway / Gradle를 유지한다. 기존 대사 API 계약과 `reconciliation_test` 격리를 유지한다.
 
 ## 먼저 결정할 사항
 

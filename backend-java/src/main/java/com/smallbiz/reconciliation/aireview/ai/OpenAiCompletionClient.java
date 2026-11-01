@@ -22,6 +22,7 @@ import java.util.Map;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
+import com.smallbiz.reconciliation.account.AiAccessPolicy;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 
@@ -29,6 +30,7 @@ import tools.jackson.databind.ObjectMapper;
 public class OpenAiCompletionClient implements AiCompletionClient {
     private static final URI ENDPOINT = URI.create("https://api.openai.com/v1/chat/completions");
     private static final int MAX_RESPONSE_BYTES = 1_048_576;
+    private final AiAccessPolicy accessPolicy;
     private final String apiKey;
     private final String model;
     private final ObjectMapper mapper;
@@ -38,15 +40,16 @@ public class OpenAiCompletionClient implements AiCompletionClient {
     @org.springframework.beans.factory.annotation.Autowired
     public OpenAiCompletionClient(@Value("${AI_API_KEY:}") String apiKey,
                                   @Value("${AI_MODEL:gpt-4.1-mini}") String model,
-                                  ObjectMapper mapper) {
-        this(apiKey, model, mapper, proxyClient());
+                                  ObjectMapper mapper, AiAccessPolicy accessPolicy) {
+        this(apiKey, model, mapper, proxyClient(), Duration.ofSeconds(35), accessPolicy);
     }
 
-    OpenAiCompletionClient(String apiKey, String model, ObjectMapper mapper, HttpClient http) {
-        this(apiKey, model, mapper, http, Duration.ofSeconds(35));
+    OpenAiCompletionClient(String apiKey, String model, ObjectMapper mapper, HttpClient http, AiAccessPolicy accessPolicy) {
+        this(apiKey, model, mapper, http, Duration.ofSeconds(35), accessPolicy);
     }
 
-    OpenAiCompletionClient(String apiKey, String model, ObjectMapper mapper, HttpClient http, Duration timeout) {
+    OpenAiCompletionClient(String apiKey, String model, ObjectMapper mapper, HttpClient http, Duration timeout, AiAccessPolicy accessPolicy) {
+        this.accessPolicy = java.util.Objects.requireNonNull(accessPolicy);
         this.timeout = timeout;
         this.apiKey = apiKey;
         this.model = model;
@@ -69,6 +72,7 @@ public class OpenAiCompletionClient implements AiCompletionClient {
     @Override public String model() { return model; }
 
     @Override public JsonNode complete(Map<String, Object> payload) {
+        accessPolicy.requireReviewAccess();
         if (!configured()) throw new AiReviewException("AI_NOT_CONFIGURED", 503,
                 "AI 검토를 준비하고 있습니다. 잠시 후 다시 시도해 주세요.");
         try {

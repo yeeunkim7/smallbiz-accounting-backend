@@ -22,8 +22,16 @@ import tools.jackson.databind.ObjectMapper;
 class OpenAiCompletionClientTest {
     private final ObjectMapper mapper = new ObjectMapper();
     private final HttpClient http = mock(HttpClient.class);
-    private final OpenAiCompletionClient client = new OpenAiCompletionClient("test-only-value", "test-model", mapper, http);
+    private final OpenAiCompletionClient client = new OpenAiCompletionClient("test-only-value", "test-model", mapper, http, mock(com.smallbiz.reconciliation.account.AiAccessPolicy.class));
 
+    @Test void directProviderInvocationFailsClosedBeforeHttpEvenWithAKey() {
+        var auth=mock(com.smallbiz.reconciliation.account.AuthService.class);
+        var tenants=mock(com.smallbiz.reconciliation.account.TenantAccess.class);
+        var policy=new com.smallbiz.reconciliation.account.AiAccessPolicy(auth,tenants,true);
+        var protectedClient=new OpenAiCompletionClient("synthetic-key-present","test-model",mapper,http,policy);
+        assertThrows(com.smallbiz.reconciliation.account.AccountException.class,()->protectedClient.complete(Map.of()));
+        verifyNoInteractions(http,auth,tenants);
+    }
     @Test void sendsOnlyToFixedHttpsEndpointAndParsesValidResponse() throws Exception {
         respond(200,"{\"choices\":[]}");
         assertTrue(client.complete(Map.of("model","test-model")).path("choices").isArray());
@@ -33,7 +41,7 @@ class OpenAiCompletionClientTest {
         assertEquals(35,request.getValue().timeout().orElseThrow().toSeconds());
     }
     @Test void missingKeyDoesNotAttemptHttpRequest() {
-        var disabled=new OpenAiCompletionClient("","test-model",mapper,http);
+        var disabled=new OpenAiCompletionClient("","test-model",mapper,http,mock(com.smallbiz.reconciliation.account.AiAccessPolicy.class));
         assertEquals("AI_NOT_CONFIGURED",assertThrows(AiReviewException.class,()->disabled.complete(Map.of())).code());
         verifyNoInteractions(http);
     }
@@ -65,7 +73,7 @@ class OpenAiCompletionClientTest {
     @Test void stalledBodyIsCancelledAndReportedAsTimeout() {
         CompletableFuture<HttpResponse<Object>> pending = new CompletableFuture<>();
         when(http.sendAsync(any(HttpRequest.class), any(HttpResponse.BodyHandler.class))).thenReturn(pending);
-        var bounded = new OpenAiCompletionClient("test-only-value", "test-model", mapper, http, Duration.ofMillis(20));
+        var bounded = new OpenAiCompletionClient("test-only-value", "test-model", mapper, http, Duration.ofMillis(20), mock(com.smallbiz.reconciliation.account.AiAccessPolicy.class));
         assertEquals("AI_TIMEOUT", assertThrows(AiReviewException.class, () -> bounded.complete(Map.of())).code());
         assertTrue(pending.isCancelled());
     }

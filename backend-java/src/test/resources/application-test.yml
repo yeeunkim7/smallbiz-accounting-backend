@@ -11,3 +11,8 @@ spring:
       ddl-auto: validate
   flyway:
     enabled: true
+
+# Explicit legacy fixture only; secure-default tests override this flag to false.
+app:
+  legacy:
+    enabled: true

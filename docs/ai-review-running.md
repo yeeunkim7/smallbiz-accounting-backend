@@ -35,10 +35,13 @@ cd /workspace/smallbiz-accounting-backend/backend-java
 bash gradlew --offline --no-daemon \
   --project-cache-dir /workspace/.local/gradle-project build
 java -jar build/libs/reconciliation-0.0.1-SNAPSHOT.jar \
-  --server.address=127.0.0.1 --server.port=8082 --AI_API_KEY=
+  --server.address=127.0.0.1 --server.port=8082 --AI_API_KEY= \
+  --spring.profiles.active=legacy-dev --app.legacy.enabled=true
 ```
 
-위 실행 예는 비용 승인 전 화면 검증을 위해 앱의 AI 키 설정을 빈 값으로 덮어써 실제 호출을 막는다. 서버의 비밀 바인딩 자체를 지우거나 변경하지 않는다. 실제 모델 검증을 승인받은 뒤에만 이 실행 인자를 제거한다.
+위 실행 예는 외부에 노출하면 안 되는 기존 화면의 익명 로컬 개발 fixture다. 기본 보안 모드는 전역 금융API를 차단한다. 등록된 계정으로 이 예외를 사용할 수 없고 AI실행도 허용하지 않는다. 새 계정 API는 [인증 안내](AUTH_FOUNDATION.md)를 따른다.
+
+위 실행 예는 비용 승인 전 화면 검증을 위해 앱의 AI 키 설정을 빈 값으로 덮어써 실제 호출을 막는다. 서버의 비밀 바인딩 자체를 지우거나 변경하지 않는다. 실제 모델 검증은 비용 승인뿐 아니라 인증된 PRO 권한과 tenant 전용 도구 구현 후 별도 절차가 필요하다. 현재는 키 인자를 제거해도 AI가 거절된다.
 
 화면 경로는 `/ai-review.html`이다. 기존 화면 상단 `하루 AI 검토` 링크로도 이동한다. 새 빌드를 만들 때 실행 중 JAR를 덮어쓰지 말고 앱을 중지하거나 실행용 복사본을 사용한다. 화면의 날짜는 서울 시간 기준으로 시작한다.
 
@@ -98,3 +101,7 @@ Gradle `test` 작업은 호스트의 실제 키가 시험 JVM으로 상속되지
 - Chromium 12개 흐름 성공, pageerror0. 독립 검토자는 별도 고정응답3개를 직접 검증하고 코드·전체 XML·모바일/변경요약 화면을 교차확인했다.
 - 새 AI 응답이 더 최신 자료를 읽었으면 상단 요약도 해당 Java 결과로 갱신한다. 검토 중 자료 변경409는 AI재시도 대신 하루 재조회를 요구한다. 검토 근거와 아래 현재 원본 목록의 조회 시점 차이도 설명한다.
 - 실제 유료 모델 호출은 0회이며, API키가 존재해도 지원모델·인증·요금·답변의 의미적 타당성을 검증한 것으로 표시하지 않는다.
+
+## 인증 경계 도입 후 AI 상태
+
+기존 실제모델 검증 스크립트는 향후 PRO 자산으로 보존했으며 지금은 실행 가능한 평가 경로가 아니다. 미인증 요청은401, FREE/STANDARD 및 tenant도구미완성PRO는거절된다. 키·app.ai.enabled만으로우회할수없고 legacy개발모드도AI권한을주지않는다. 현재FREE목표에실제모델호출은필요하지않다.

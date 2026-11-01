@@ -1,0 +1,13 @@
+export type Tenant = { id: string; name: string; plan: string };
+export type Me = { accountId: string; login: string; tenants: Tenant[] };
+export type AuthSession = { accessToken: string; expiresAtEpoch: number; login: string; accountId: string };
+export type Page<T> = { items: T[]; page: number; size: number; hasNext: boolean };
+export type Counterparty = { id: string; code: string; name: string };
+export type Invoice = { id: string; counterpartyId: string; invoiceNumber: string; amount: string; issueDate: string; dueDate: string };
+export type Payment = { id: string; amount: string; bookedDate: string; payerName: string | null; note: string | null };
+export type InvoiceBalance = { invoiceId: string; amount: string; allocatedAmount: string; outstandingAmount: string; overdueAmount: string; dueDate: string; asOf: string; status: 'UNPAID' | 'PARTIAL' | 'PAID' };
+export type PaymentBalance = { paymentId: string; amount: string; allocatedAmount: string; unallocatedAmount: string; status: 'UNALLOCATED' | 'PARTIAL' | 'ALLOCATED' };
+export type Summary = { asOf: string; allocationState: string; invoiceCount: number; paymentCount: number; activeAllocationLineCount: number; invoiceAmount: string; allocatedAmount: string; outstandingAmount: string; overdueAmount: string; paymentAmount: string; unallocatedAmount: string };
+export type Usage = { month: string; timezone: string; plan: string; limit: number; completed: number; remaining: number; resetAt: string };
+export type Resource = 'invoices' | 'payments' | 'counterparties';
+export type Draft = { code: string; name: string; counterpartyId: string; invoiceNumber: string; amount: string; issueDate: string; dueDate: string; bookedDate: string; payerName: string; note: string };

@@ -1,4 +1,4 @@
-> 개발 방향 갱신: 소규모 사업자의 **미수금·입금 확인 FREE MVP**를 우선 개발합니다. 인증·청구/입금 등록·수동 배분·규칙 후보·은행 CSV API·월별 성공 실행 한도를 구현했습니다. 모바일은 아직 없습니다. 무료 서비스는 미출시입니다. 기존 대사와 AI 자산은 보존하며 AI는 향후 PRO로 분리합니다. [개발 계획](docs/RECEIVABLES_FREE_MVP_PLAN.md) · [tenant 은행 CSV 계약](docs/RECEIVABLES_IMPORT.md)
+> 개발 방향 갱신: 소규모 사업자의 **미수금·입금 확인 FREE MVP**를 우선 개발합니다. 인증·청구/입금 등록·수동 배분·규칙 후보·은행 CSV API·월별 성공 실행 한도를 구현했습니다. Expo 모바일 코어(로그인·홈·직접 등록·장부·청구 상세·이용량)도 연결했습니다. 모바일의 입금 연결 검토·CSV와 실기기 검증은 남아 있습니다. 무료 서비스는 미출시입니다. 기존 대사와 AI 자산은 보존하며 AI는 향후 PRO로 분리합니다. [개발 계획](docs/RECEIVABLES_FREE_MVP_PLAN.md) · [tenant 은행 CSV 계약](docs/RECEIVABLES_IMPORT.md)
 
 # 입출금 대사 시스템
 

@@ -7,6 +7,7 @@ Only this synthetic tenant is removed. Credentials and raw login footage stay ou
 import argparse
 import asyncio
 import json
+import hashlib
 import os
 from pathlib import Path
 import re
@@ -17,10 +18,11 @@ import urllib.parse
 import urllib.request
 import uuid
 from PIL import Image, ImageDraw, ImageFont
-from playwright.async_api import async_playwright, expect
 
 ROOT = Path(__file__).resolve().parents[1]
 parser = argparse.ArgumentParser(description=__doc__)
+parser.add_argument('--reedit', type=Path, help='Recompose an existing MP4 offline; preserves its phone area and timeline.')
+parser.add_argument('--manifest', type=Path, help='Manifest for --reedit (defaults to the source directory).')
 parser.add_argument('--api', default='http://127.0.0.1:8091')
 parser.add_argument('--web', default='http://127.0.0.1:8081')
 parser.add_argument('--output', type=Path, default=ROOT / 'docs/demo')
@@ -32,9 +34,9 @@ for value in (API, WEB):
     if u.scheme != 'http' or u.hostname not in ('localhost', '127.0.0.1') or u.username or u.password or u.path or u.query or u.fragment:
         raise SystemExit('Use local HTTP test servers only.')
 db = urllib.parse.urlsplit(os.environ.get('TEST_DB_URL', '').removeprefix('jdbc:'))
-if db.scheme != 'postgresql' or db.hostname not in ('localhost', '127.0.0.1') or db.path != '/reconciliation_test':
+if not args.reedit and (db.scheme != 'postgresql' or db.hostname not in ('localhost', '127.0.0.1') or db.path != '/reconciliation_test'):
     raise SystemExit('TEST_DB_URL must select local reconciliation_test.')
-if not os.environ.get('TEST_DB_USERNAME') or not os.environ.get('TEST_DB_PASSWORD'):
+if not args.reedit and (not os.environ.get('TEST_DB_USERNAME') or not os.environ.get('TEST_DB_PASSWORD')):
     raise SystemExit('Configure test DB credentials securely first.')
 OUT, RAW = args.output.resolve(), args.raw_dir.resolve()
 if RAW == ROOT or ROOT in RAW.parents:
@@ -74,6 +76,7 @@ def cleanup():
     checks.append('syntheticTenantRemoved')
 
 async def record():
+    from playwright.async_api import async_playwright, expect
     global owner, tenant, token
     login, password = 'portfolio-' + uuid.uuid4().hex, 'Synthetic-' + uuid.uuid4().hex
     session = api('/auth/signup', {'login': login, 'password': password, 'tenantName': '가상공방 · 포트폴리오'})
@@ -141,14 +144,14 @@ async def record():
             await field('금액 (원)', '100000')
             await field('청구일', '2026-11-01')
             await field('입금 기한', '2026-11-30')
-        await scene('청구부터 기록합니다', '01 / 청구 등록', ['거래처를 고르고 100,000원 청구를 입력합니다.', '기한과 금액을 확인한 후 서버에 저장합니다.'], 11, invoice_form)
+        await scene('청구 등록', '01', ['거래처와 청구 금액 100,000원을 입력합니다.'], 11, invoice_form)
         async def save_invoice():
             await click('청구 등록하기')
             await expect(page.get_by_text('청구를 등록했어요.', exact=False)).to_be_visible()
             await page.get_by_role('button', name=re.compile('합성 거래처, 11월 합성 청구')).click()
             await expect(page.get_by_text('현재 남은 금액', exact=True)).to_be_visible()
             balance('100000')
-        await scene('현재 잔액은 서버에서', '02 / 청구 상세', ['청구액 100,000원, 연결된 입금 0원.', '현재 남은 금액은 실제 API 조회 결과입니다.'], 9, save_invoice)
+        await scene('청구 상세', '02', ['청구 100,000원과 남은 금액을 확인합니다.'], 9, save_invoice)
         await click('홈', 'tab')
         async def payment_form():
             await click('입금 추가')
@@ -157,14 +160,14 @@ async def record():
             await field('입금자 이름 (선택)', '합성 거래처')
             await click('입금 등록하기')
             await expect(page.get_by_text('입금을 등록했어요.', exact=False)).to_be_visible()
-        await scene('부분 입금을 기록합니다', '03 / 입금 등록', ['40,000원을 입금으로 직접 등록합니다.', '이 단계에서는 청구와 아직 연결하지 않습니다.'], 11, payment_form)
+        await scene('입금 등록', '03', ['입금 40,000원을 등록합니다.'], 11, payment_form)
         create('payments', {'amount': '60000', 'bookedDate': '2026-11-02', 'payerName': '합성 거래처'})
         async def unallocated_home():
             await click('홈', 'tab')
             # Tab switch refreshes the server summary after the UI registration.
             await expect(page.get_by_text('100,000원', exact=True).first).to_be_visible()
             balance('100000')
-        await scene('입금과 청구는 별개로', '04 / 연결 전 장부', ['두 입금은 40,000원 + 60,000원입니다.', '입금 등록만으로 미수 잔액은 줄지 않습니다.', '두 번째 합성 입금은 장면 밖에서 API로 준비했습니다.'], 9, unallocated_home)
+        await scene('입금 내역', '04', ['입금 40,000원과 60,000원을 확인합니다.'], 9, unallocated_home)
         await click('입금 연결', 'tab')
         await field('입금 시작일', '2026-11-01')
         await field('입금 종료일', '2026-11-30')
@@ -175,7 +178,7 @@ async def record():
             assert api(prefix + '/matching-usage')['completed'] == 1
             assert len(api(prefix + '/allocations')['items']) == 0
             checks.append('oneRuleRunNoAutomaticAllocation')
-        await scene('규칙 후보를 생성합니다', '05 / 명시적 후보 실행', ['이번 실행은 서버 사용량 1회로 기록됩니다.', '후보는 검토 자료이며 자동 확정되지 않습니다.', '기본 업무에는 AI를 사용하지 않습니다.'], 11, candidates)
+        await scene('연결 후보', '05', ['입금과 청구의 연결 후보를 확인합니다.'], 11, candidates)
         async def add(amount):
             loc = page.get_by_role('button', name=re.compile(re.escape(amount + ' → 11월 합성 청구 초안에 담기') + '$'))
             await loc.scroll_into_view_if_needed()
@@ -194,12 +197,12 @@ async def record():
             await add('40,000원')
             await confirm()
             balance('60000')
-        await scene('40,000원을 직접 확정', '06 / 부분 연결', ['후보를 초안에 담고 현재 잔액을 검토합니다.', '서버는 확정 시점에도 잔액을 다시 검사합니다.', '실제 자금 이동 없이 장부 연결을 저장합니다.'], 13, first_confirm)
+        await scene('부분 입금 연결', '06', ['40,000원을 검토하고 연결합니다.'], 13, first_confirm)
         async def partial_home():
             await click('홈', 'tab')
             await expect(page.get_by_text('60,000원', exact=True).first).to_be_visible()
             balance('60000')
-        await scene('남은 금액 60,000원', '07 / 부분 입금 반영', ['100,000원 청구 중 40,000원이 연결됐습니다.', '남은 입금과 청구 잔액을 함께 확인합니다.'], 8, partial_home)
+        await scene('남은 금액 확인', '07', ['40,000원 연결 후 미수 60,000원.'], 8, partial_home)
         await click('입금 연결', 'tab')
         async def second_confirm():
             await add('60,000원')
@@ -207,7 +210,7 @@ async def record():
             balance('0')
             await click('홈', 'tab')
             await expect(page.get_by_text('0원', exact=True).first).to_be_visible()
-        await scene('나머지 입금까지 연결', '08 / 전액 연결 완료', ['60,000원을 추가로 검토하고 확정합니다.', '서버 조회 미수 잔액이 0원으로 바뀝니다.', '후보를 재생성하지 않아 사용량은 그대로입니다.'], 13, second_confirm)
+        await scene('입금 연결 완료', '08', ['나머지 60,000원 연결 후 미수 0원.'], 13, second_confirm)
         await click('입금 연결', 'tab')
         await page.get_by_label('연결 취소 사유 (필수)', exact=True).scroll_into_view_if_needed()
         async def cancel_second():
@@ -224,12 +227,12 @@ async def record():
             assert len(cancelled) == 1 and len(cancelled[0]['audit']) == 2
             assert api(prefix + '/matching-usage')['completed'] == 1
             checks.append('cancellationAuditTwoEventsAndUsageStillOne')
-        await scene('사유와 함께 연결 취소', '09 / 취소와 감사 이력', ['두 번째 60,000원 연결만 취소합니다.', '확정·취소 이력과 사유가 서버에 남습니다.', '청구와 입금 원본을 유지하고 잔액을 복원합니다.'], 12, cancel_second)
+        await scene('연결 취소', '09', ['60,000원 연결을 사유와 함께 취소합니다.'], 12, cancel_second)
         async def restored():
             await click('홈', 'tab')
             await expect(page.get_by_text('60,000원', exact=True).first).to_be_visible()
             balance('60000')
-        await scene('되돌린 결과도 확인합니다', '10 / 최종 장부', ['복원된 미수 잔액 60,000원을 확인합니다.', '등록 → 후보 검토 → 확정 → 취소까지', '실제 UI와 Java API를 연결해 시연했습니다.'], 9, restored)
+        await scene('취소 후 잔액', '10', ['미수 잔액이 60,000원으로 복원됩니다.'], 9, restored)
         assert not errors, 'Browser page error'
         raw_path = await page.video.path()
         await context.close()
@@ -251,31 +254,37 @@ def wrap(draw, text, size, width):
             current += char
     return lines + [current]
 
+PRESENTATION = [
+    ('청구 등록', '거래처와 청구 금액 100,000원을 입력합니다.'),
+    ('청구 상세', '청구 100,000원과 남은 금액을 확인합니다.'),
+    ('입금 등록', '입금 40,000원을 등록합니다.'),
+    ('입금 내역', '입금 40,000원과 60,000원을 확인합니다.'),
+    ('연결 후보', '입금과 청구의 연결 후보를 확인합니다.'),
+    ('부분 입금 연결', '40,000원을 검토하고 연결합니다.'),
+    ('남은 금액 확인', '40,000원 연결 후 미수 60,000원.'),
+    ('입금 연결 완료', '나머지 60,000원 연결 후 미수 0원.'),
+    ('연결 취소', '60,000원 연결을 사유와 함께 취소합니다.'),
+    ('취소 후 잔액', '미수 잔액이 60,000원으로 복원됩니다.'),
+]
+
+def presentation(scene, index):
+    title, result = PRESENTATION[index]
+    return {**scene, 'title': title, 'lines': [result]}
+
 def frame(scene, index):
+    scene = presentation(scene, index)
     image = Image.new('RGB', (1280, 960), '#F3F5F1')
     d = ImageDraw.Draw(image)
     d.rectangle((0, 0, 1280, 12), fill='#086255')
-    d.text((66, 56), '차곡 · 미수금 장부', font=font(24, True), fill='#086255')
-    d.text((66, 112), '받을 돈을\n차근차근 연결하다', font=font(45, True), fill='#173B34', spacing=10)
-    d.rounded_rectangle((66, 292, 680, 335), radius=15, fill='#DCEBE4')
-    d.text((82, 297), scene['subtitle'], font=font(19, True), fill='#086255')
-    d.text((66, 367), scene['title'], font=font(32, True), fill='#173B34')
-    y = 447
-    for text in scene['lines']:
-        for line in wrap(d, text, 23, 610):
-            d.text((66, y), line, font=font(23), fill='#4C655D')
-            y += 37
-        y += 17
-    d.line((66, 760, 680, 760), fill='#CFDCD4', width=2)
-    d.text((66, 781), '실제 화면 녹화 · 대기 구간 편집', font=font(18), fill='#60796F')
-    d.text((66, 816), 'Expo / React Native Web  →  Java API', font=font(18), fill='#60796F')
+    d.text((66, 66), '차곡', font=font(28, True), fill='#086255')
+    d.text((66, 313), f'{index + 1:02d}', font=font(20), fill='#60796F')
+    d.text((66, 363), scene['title'], font=font(42, True), fill='#173B34')
+    for n, line in enumerate(wrap(d, scene['lines'][0], 23, 610)):
+        d.text((66, 451 + n * 37), line, font=font(23), fill='#4C655D')
     for n in range(10):
         x = 66 + n * 61
         d.rounded_rectangle((x, 872, x + 45, 878), radius=3, fill='#086255' if n <= index else '#D5DFD8')
     d.rounded_rectangle((783, 39, 1207, 915), radius=28, fill='#173B34')
-    d.text((808, 18), '390 × 844 · Chromium', font=font(13), fill='#60796F')
-    d.rectangle((0, 929, 1280, 960), fill='#173B34')
-    d.text((66, 931), '브라우저 모바일 화면 · 합성 자료 · 실제 API 연결 · 음성 없음(자막)', font=font(16), fill='#EFF8F1')
     path = RAW / f'frame-{index:02d}.png'
     image.save(path)
     return path
@@ -286,7 +295,9 @@ def srt_time(seconds):
 
 def compose(raw_path):
     outputs, subtitles, timeline = [], [], 0
-    for i, scene in enumerate(scenes):
+    for i, original in enumerate(scenes):
+        scene = presentation(original, i)
+        scenes[i] = scene
         backdrop = frame(scene, i)
         output = RAW / f'chapter-{i:02d}.mp4'
         duration = round(scene['duration'] * 25) / 25
@@ -313,8 +324,53 @@ def compose(raw_path):
     (OUT / 'manifest.json').write_text(json.dumps(manifest, ensure_ascii=False, indent=2) + '\n')
     print(json.dumps({'status': 'complete', 'duration': info['format']['duration'], 'bytes': final.stat().st_size, 'chapters': len(scenes), 'checks': checks}, ensure_ascii=False))
 
-try:
-    raw = asyncio.run(record())
-finally:
-    cleanup()
-compose(raw)
+def reedit(source):
+    source = source.resolve()
+    manifest_path = args.manifest or source.with_name('manifest.json')
+    manifest = json.loads(manifest_path.read_text(encoding='utf-8'))
+    chapters = manifest['chapters']
+    if len(chapters) != len(PRESENTATION):
+        raise SystemExit('Expected the existing ten-chapter demo.')
+    source_info = json.loads(run(['ffprobe', '-v', 'error', '-show_entries', 'format=duration:stream=width,height,avg_frame_rate', '-of', 'json', str(source)]))
+    stream = source_info['streams'][0]
+    if (stream['width'], stream['height'], stream['avg_frame_rate']) != (1280, 960, '25/1'):
+        raise SystemExit('Expected the original 1280 × 960, 25 fps demo.')
+    duration = float(source_info['format']['duration'])
+    if abs(sum(c['duration'] for c in chapters) - duration) > 0.001:
+        raise SystemExit('Chapter timeline must cover the complete source.')
+    source_hash = hashlib.sha256(source.read_bytes()).hexdigest()
+    backdrops, subtitles = [], []
+    for i, chapter in enumerate(chapters):
+        scene = presentation(chapter, i)
+        backdrops.append((frame(scene, i), chapter['duration']))
+        subtitles.append(f"{i+1}\n{srt_time(chapter['start'])} --> {srt_time(chapter['start']+chapter['duration'])}\n{scene['title']}\n{scene['lines'][0]}\n")
+        chapter.update(title=scene['title'], result=scene['lines'][0])
+    concat = RAW / 'clean-backdrops.txt'
+    def entry(path):
+        return "file '" + str(path).replace("'", "'\\''") + "'\n"
+    concat.write_text(''.join(entry(p) + f'duration {d}\n' for p, d in backdrops) + entry(backdrops[-1][0]))
+    edited = RAW / 'clean-demo.mp4'
+    run(['ffmpeg', '-y', '-v', 'error', '-i', str(source), '-f', 'concat', '-safe', '0', '-i', str(concat), '-filter_complex', '[0:v]crop=390:844:800:54:exact=1[phone];[1:v]fps=25,setpts=PTS-STARTPTS[backdrop];[backdrop][phone]overlay=800:54:eof_action=repeat,format=yuv420p[out]', '-map', '[out]', '-frames:v', str(round(duration * 25)), '-r', '25', '-fps_mode', 'cfr', '-c:v', 'libx264', '-preset', 'veryfast', '-crf', '18', '-an', '-movflags', '+faststart', str(edited)])
+    edited_info = json.loads(run(['ffprobe', '-v', 'error', '-count_frames', '-show_entries', 'format=duration:stream=nb_read_frames,avg_frame_rate', '-of', 'json', str(edited)]))
+    assert float(edited_info['format']['duration']) == duration
+    assert edited_info['streams'][0]['avg_frame_rate'] == '25/1'
+    assert int(edited_info['streams'][0]['nb_read_frames']) == round(duration * 25)
+    run(['ffmpeg', '-v', 'error', '-i', str(edited), '-f', 'null', '-'])
+    final = OUT / 'receivables-demo.mp4'
+    shutil.copyfile(edited, final)
+    (OUT / 'captions.srt').write_text('\n'.join(subtitles), encoding='utf-8')
+    run(['ffmpeg', '-y', '-v', 'error', '-ss', '67', '-i', str(final), '-frames:v', '1', str(OUT / 'poster.png')])
+    manifest['media'] = json.loads(run(['ffprobe', '-v', 'error', '-show_entries', 'format=duration,size:stream=codec_name,width,height,pix_fmt,avg_frame_rate', '-of', 'json', str(final)]))
+    manifest['presentationEdit'] = {'sourceSha256': source_hash, 'phoneRegion': {'x': 800, 'y': 54, 'width': 390, 'height': 844}, 'timeline': 'Preserved all source frames at 25 fps; replaced presentation backdrop only.', 'command': 'python scripts/record-portfolio-demo.py --reedit SOURCE.mp4 --manifest SOURCE_MANIFEST.json'}
+    manifest['checks'] = [c for c in manifest['checks'] if c != 'sixSampleFramesReviewed'] + ['offlinePresentationReedit', 'completeEditedVideoDecode', 'completeSourceFrameCountPreserved']
+    (OUT / 'manifest.json').write_text(json.dumps(manifest, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
+    print(json.dumps({'status': 'complete', 'duration': duration, 'bytes': final.stat().st_size, 'chapters': len(chapters)}))
+
+if args.reedit:
+    reedit(args.reedit)
+else:
+    try:
+        raw = asyncio.run(record())
+    finally:
+        cleanup()
+    compose(raw)

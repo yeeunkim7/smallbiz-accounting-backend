@@ -18,7 +18,11 @@
     "serverOutstanding=60000",
     "syntheticTenantRemoved",
     "completeVideoDecode",
-    "sixSampleFramesReviewed"
+    "offlinePresentationReedit",
+    "completeEditedVideoDecode",
+    "completeSourceFrameCountPreserved",
+    "tenChapterFramesReviewed",
+    "faststartVerified"
   ],
   "pageErrors": 0,
   "media": {
@@ -35,59 +39,81 @@
     ],
     "format": {
       "duration": "106.000000",
-      "size": "1459145"
+      "size": "1333700"
     }
   },
   "chapters": [
     {
       "start": 0,
       "duration": 11.0,
-      "title": "청구부터 기록합니다"
+      "title": "청구 등록",
+      "result": "거래처와 청구 금액 100,000원을 입력합니다."
     },
     {
       "start": 11.0,
       "duration": 9.0,
-      "title": "현재 잔액은 서버에서"
+      "title": "청구 상세",
+      "result": "청구 100,000원과 남은 금액을 확인합니다."
     },
     {
       "start": 20.0,
       "duration": 11.0,
-      "title": "부분 입금을 기록합니다"
+      "title": "입금 등록",
+      "result": "입금 40,000원을 등록합니다."
     },
     {
       "start": 31.0,
       "duration": 9.0,
-      "title": "입금과 청구는 별개로"
+      "title": "입금 내역",
+      "result": "입금 40,000원과 60,000원을 확인합니다."
     },
     {
       "start": 40.0,
       "duration": 11.0,
-      "title": "규칙 후보를 생성합니다"
+      "title": "연결 후보",
+      "result": "입금과 청구의 연결 후보를 확인합니다."
     },
     {
       "start": 51.0,
       "duration": 13.0,
-      "title": "40,000원을 직접 확정"
+      "title": "부분 입금 연결",
+      "result": "40,000원을 검토하고 연결합니다."
     },
     {
       "start": 64.0,
       "duration": 8.0,
-      "title": "남은 금액 60,000원"
+      "title": "남은 금액 확인",
+      "result": "40,000원 연결 후 미수 60,000원."
     },
     {
       "start": 72.0,
       "duration": 13.0,
-      "title": "나머지 입금까지 연결"
+      "title": "입금 연결 완료",
+      "result": "나머지 60,000원 연결 후 미수 0원."
     },
     {
       "start": 85.0,
       "duration": 12.0,
-      "title": "사유와 함께 연결 취소"
+      "title": "연결 취소",
+      "result": "60,000원 연결을 사유와 함께 취소합니다."
     },
     {
       "start": 97.0,
       "duration": 9.0,
-      "title": "되돌린 결과도 확인합니다"
+      "title": "취소 후 잔액",
+      "result": "미수 잔액이 60,000원으로 복원됩니다."
     }
-  ]
+  ],
+  "presentationEdit": {
+    "sourceSha256": "42916ec11f2ca2115c36329eaa77383ea7210bc2c6a152cadce884e7ec5235b6",
+    "phoneRegion": {
+      "x": 800,
+      "y": 54,
+      "width": 390,
+      "height": 844
+    },
+    "timeline": "Preserved all source frames at 25 fps; replaced presentation backdrop only.",
+    "command": "python scripts/record-portfolio-demo.py --reedit SOURCE.mp4 --manifest SOURCE_MANIFEST.json",
+    "phoneRegionSsim": 0.998848
+  }
 }

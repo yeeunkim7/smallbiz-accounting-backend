@@ -19,6 +19,7 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.HandlerMethodValidationException;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.multipart.MaxUploadSizeExceededException;
+import org.springframework.web.multipart.MultipartException;
 import org.springframework.web.multipart.support.MissingServletRequestPartException;
 
 import com.smallbiz.reconciliation.reconciliation.InvalidReconciliationQueryException;
@@ -121,6 +122,14 @@ public class GlobalExceptionHandler {
 	public ResponseEntity<ErrorResponse> handlePayloadTooLarge(Exception ex) {
 		return ResponseEntity.status(HttpStatus.PAYLOAD_TOO_LARGE)
 				.body(ErrorResponse.of(ErrorCode.PAYLOAD_TOO_LARGE, "파일 크기가 허용 한도를 초과했습니다."));
+	}
+
+	@ExceptionHandler(MultipartException.class)
+	public ResponseEntity<ErrorResponse> handleMalformedMultipart(MultipartException ex) {
+		// Multipart parser errors may include client-controlled headers or filenames.
+		// Return a safe error without passing the exception to the logging fallback.
+		return ResponseEntity.badRequest()
+				.body(ErrorResponse.of(ErrorCode.INVALID_INPUT, "파일 전송 형식이 올바르지 않습니다."));
 	}
 
 	@ExceptionHandler({

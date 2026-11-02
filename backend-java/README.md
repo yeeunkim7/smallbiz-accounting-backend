@@ -175,3 +175,8 @@ curl.exe -s -X PUT http://localhost:8082/api/v1/reconciliations/daily/2026-09-03
 | 목록 page size | 기본 20, 최대 100 |
 | 검토 메모 | 최대 2,000자 |
 | 오류 항목 | 응답 최대 100개, 초과 시 `truncated` |
+
+미수금 신규 matching run에는 V13 월별 성공 한도가 적용됩니다. FREE 기본10은 서버 설정 가설이며 STANDARD/PRO 기본0은 명시적 설정 전 신규 실행을 거부합니다. 현재 월 `GET /api/v1/tenants/{tenantId}/matching-usage`, 원자성·재전송·429 계약은 [사용량 문서](../docs/RECEIVABLES_USAGE.md)를 참고하세요. CSV·수동 배분/취소·조회는0차감입니다.
+# Expo 브라우저 연결
+
+별도 origin의 Expo 웹은 서버 `app.cors.allowed-origins`에 정확한 주소를 명시한 경우에만 허용합니다. 기본 허용 목록은 비어 있으며 기존 Bearer·사업체 권한 검사를 유지합니다. [Windows/모바일 실행 및 검증](../docs/RECEIVABLES_MOBILE_VALIDATION.md)을 참고하세요. native iOS/Android 요청에는 CORS가 필요하지 않습니다.

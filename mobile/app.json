@@ -1,0 +1,27 @@
+{
+  "expo": {
+    "name": "차곡",
+    "slug": "chagok-receivables",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "ios": {
+      "supportsTablet": true
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#086F63",
+        "foregroundImage": "./assets/adaptive-icon.png"
+      },
+      "predictiveBackGestureEnabled": false
+    },
+    "web": {
+      "favicon": "./assets/favicon.png",
+      "name": "차곡 · 미수금 장부"
+    },
+    "plugins": [
+      "expo-secure-store"
+    ]
+  }
+}

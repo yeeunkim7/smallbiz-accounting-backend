@@ -24,6 +24,7 @@ import org.springframework.security.web.authentication.AnonymousAuthenticationFi
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.web.filter.OncePerRequestFilter;
+import org.springframework.web.cors.CorsConfigurationSource;
 import tools.jackson.databind.ObjectMapper;
 
 @Configuration
@@ -34,9 +35,11 @@ public class AccountSecurityConfiguration {
     @Bean UserDetailsService disabledPasswordLogin() { return username -> { throw new UsernameNotFoundException("Unavailable"); }; }
 
     @Bean SecurityFilterChain accountSecurity(HttpSecurity http, AuthService auth, ObjectMapper mapper,
-            Environment environment, @Value("${app.legacy.enabled:false}") boolean enabled) throws Exception {
+            Environment environment, CorsConfigurationSource browserCors,
+            @Value("${app.legacy.enabled:false}") boolean enabled) throws Exception {
         boolean legacy = enabled && environment.matchesProfiles("legacy-dev");
         http.csrf(csrf -> csrf.disable()) // No credential cookies or browser HTTP authentication.
+                .cors(cors -> cors.configurationSource(browserCors))
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .requestCache(cache -> cache.disable())
                 .formLogin(form -> form.disable()).httpBasic(basic -> basic.disable()).logout(logout -> logout.disable())

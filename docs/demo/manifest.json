@@ -1,0 +1,93 @@
+{
+  "sourceCommit": "54fa68d12c6e4ab3557b9e9882001a4543c9dd0d",
+  "disclosure": "브라우저 모바일 화면 · 합성 자료 · 실제 API 연결 · 음성 없음(자막) · 대기 구간 편집",
+  "seedOutsideCamera": [
+    "합성 계정과 사업장",
+    "거래처",
+    "두 번째 60,000원 입금"
+  ],
+  "checks": [
+    "serverOutstanding=100000",
+    "serverOutstanding=100000",
+    "oneRuleRunNoAutomaticAllocation",
+    "serverOutstanding=60000",
+    "serverOutstanding=60000",
+    "serverOutstanding=0",
+    "serverOutstanding=60000",
+    "cancellationAuditTwoEventsAndUsageStillOne",
+    "serverOutstanding=60000",
+    "syntheticTenantRemoved",
+    "completeVideoDecode",
+    "sixSampleFramesReviewed"
+  ],
+  "pageErrors": 0,
+  "media": {
+    "programs": [],
+    "stream_groups": [],
+    "streams": [
+      {
+        "codec_name": "h264",
+        "width": 1280,
+        "height": 960,
+        "pix_fmt": "yuv420p",
+        "avg_frame_rate": "25/1"
+      }
+    ],
+    "format": {
+      "duration": "106.000000",
+      "size": "1459145"
+    }
+  },
+  "chapters": [
+    {
+      "start": 0,
+      "duration": 11.0,
+      "title": "청구부터 기록합니다"
+    },
+    {
+      "start": 11.0,
+      "duration": 9.0,
+      "title": "현재 잔액은 서버에서"
+    },
+    {
+      "start": 20.0,
+      "duration": 11.0,
+      "title": "부분 입금을 기록합니다"
+    },
+    {
+      "start": 31.0,
+      "duration": 9.0,
+      "title": "입금과 청구는 별개로"
+    },
+    {
+      "start": 40.0,
+      "duration": 11.0,
+      "title": "규칙 후보를 생성합니다"
+    },
+    {
+      "start": 51.0,
+      "duration": 13.0,
+      "title": "40,000원을 직접 확정"
+    },
+    {
+      "start": 64.0,
+      "duration": 8.0,
+      "title": "남은 금액 60,000원"
+    },
+    {
+      "start": 72.0,
+      "duration": 13.0,
+      "title": "나머지 입금까지 연결"
+    },
+    {
+      "start": 85.0,
+      "duration": 12.0,
+      "title": "사유와 함께 연결 취소"
+    },
+    {
+      "start": 97.0,
+      "duration": 9.0,
+      "title": "되돌린 결과도 확인합니다"
+    }
+  ]
+}

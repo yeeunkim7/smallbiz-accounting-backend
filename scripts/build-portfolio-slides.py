@@ -195,33 +195,30 @@ note(s, '근거: docs/architecture.md, docs/receivables-mobile-matching-review.m
      '확정 재생 응답이 과거 v1이더라도 현재 GET은 취소 v2를 반환할 수 있다. 성능 수치나 처리량 주장은 하지 않는다. '
      '검증 기록 기준일 2026-11-01.')
 
-# 4. Authorship and evidence-based agent workflow.
-s = base('AI 에이전트를 활용한 개발', '사용자가 요구·제약·우선순위를 정하고, 에이전트의 결과를 실행 근거로 검토했습니다.')
-labels = [('요구·제약', '사용자'), ('분석', '설계·작업 분리'), ('구현', '기능 단위 변경'),
-          ('독립 검토', '결함·경계 확인'), ('실행 검증', 'DB·브라우저')]
-for i, (title, body) in enumerate(labels):
-    x = .75 + 2.43*i
-    rect(s, x, 2.46, 2.14, 1.29, 'pale' if i != 0 else 'blue', radius=True)
-    text(s, title, x+.12, 2.68, 1.9, .42, 22, 'FFFFFF' if i == 0 else 'navy', True,
-         align=PP_ALIGN.CENTER)
-    text(s, body, x+.08, 3.23, 1.98, .34, 18, 'FFFFFF' if i == 0 else 'text', align=PP_ALIGN.CENTER)
-    if i < 4:
-        arrow(s, x+2.19, 2.99, .2, .19)
-text(s, '실제 발견과 수정', .76, 4.13, 11.9, .45, 23, 'navy', True)
-for x, title, lines in [(.75, '브라우저에서 로그인 요청 실패',
-                        'fetch 호출의 receiver 문제 발견\nlexical wrapper로 호출 방식 수정\n실제 화면 전환·회귀 검사 확인'),
-                       (6.82, '응답 유실 뒤 중복 저장 위험',
-                        '공백 수정으로 요청 키 변경 발견\n정규화한 내용으로 같은 키 유지\n실제 저장 → 503 → 같은 키 재전송')]:
-    rect(s, x, 4.83, 5.76, 1.93, 'light', 'line', True)
-    text(s, title, x+.2, 5.03, 5.33, .4, 21, 'blue', True)
-    text(s, lines, x+.2, 5.62, 5.33, 1.01, 18)
-note(s, '개발 방식 근거: docs/AI_REVIEW_WORK.md, docs/receivables-mobile-core-review.md, '
-     'docs/receivables-mobile-matching-review.md. 사용자 역할은 요구사항·제품 범위·제약·우선순위 결정이며 '
-     'AI 에이전트는 분석·구현·독립 검토와 실행 검증을 수행했다. 개인이 직접 코드를 작성한 비율 또는 전부 수동 구현했다는 주장은 하지 않는다. '
-     '사례1: raw fetch를 객체 메서드로 호출하면 Chromium Illegal invocation 발생, mobile/src/api.ts의 (...args) => fetch(...args) wrapper로 수정. '
-     '사례2: 불명확한 등록 POST 뒤 공백만 수정해도 동일 정규화 payload key가 바뀌는 결함을 수정하고 실제 commit 뒤 503 응답/같은 key/입금 1건을 확인했다. '
-     '검증 기록은 2026-11-01. 서비스 자체의 현재 FREE 미수금 기능은 모델 호출 없이 Java/DB로 계산·확정한다. '
-     'AI를 활용한 개발 방법과 제품 내 AI 기능을 혼동하지 않는다.')
+# 4. Concrete user instructions and agent execution.
+s = base('AI 에이전트를 어떻게 활용했는가', '업무 규칙과 검증 기준을 지시하고, 역할·사용량·개발 순서를 조율했습니다.')
+cards = [
+    ('01', '업무 기준을 먼저 지정', '“금액 계산은 기존\nJava 로직을 사용한다.”', '기존 코드 재사용 · FREE 우선\nAI에는 조회 도구만 허용'),
+    ('02', '역할과 사용량 제어', '“동시 실행은 최대\n2개로 제한하세요.”', '총괄 → 분석·개발·독립 검토\n문서는 경량, 코딩은 Sol'),
+    ('03', '실제 실행 후 개선 요청', '“실제 브라우저에서\n주요 상호작용을 확인한다.”', 'DB·브라우저 결과 보고 요청\n발견된 오류 수정·재검증'),
+]
+for i, (number, title, prompt, body) in enumerate(cards):
+    x = .75 + 4.1*i
+    rect(s, x, 2.4, 3.85, 2.99, 'light', 'line', True)
+    text(s, number, x+.2, 2.58, 3.45, .36, 20, 'blue', True)
+    text(s, title, x+.2, 3.04, 3.45, .45, 21, 'navy', True)
+    text(s, prompt, x+.2, 3.62, 3.45, .78, 20, 'blue', True)
+    text(s, body, x+.2, 4.46, 3.45, .6, 18)
+text(s, '검토에서 발견한 오류를 다시 검증', .78, 5.58, 11.8, .44, 23, 'navy', True)
+text(s, '공백 수정 → 같은 요청 키 유지  /  지연 응답 → 최신 조회 유지', .78, 6.18, 11.8, .55, 20)
+note(s, '실제 사용자 지시를 요약한 장표다. 사용자 역할: 업무 문제·목표·규칙·제약과 우선순위 결정, 역할 분담/모델 사용 기준 제시, 결과 보고와 개선 요청. '
+     '총괄 에이전트가 실제 하위 작업을 배분했고 개발/독립 검토 에이전트가 코드 구현·오류 발견·검증 실행을 수행했다. 사용자가 오류를 직접 발견하거나 코드를 전부 수동 작성했다고 표현하지 않는다. '
+     '실제 지시: 금액 계산은 기존 Java 로직을 사용한다. AI에는 조회 도구만 제공한다. 하위 에이전트는 필요한 경우에만 실행하고 동시 실행은 최대 2개로 제한하세요. '
+     '단순 조사·문서화는 경량 모델, 일반 코딩은 Sol, 복잡한 문제만 Astra를 사용하도록 요청했다. 자동 테스트에서는 실제 유료 API 호출 금지. 검토 한 번당 모델 요청 최대5회와 무한 재시도 금지도 지정했다. '
+     '3번째 카드의 브라우저 문구는 실제 지시의 요약이다. 실제 지시 전문은 실제 브라우저에서 렌더링된 화면과 주요 상호작용을 확인한다. '
+     '검토/재검증 근거: docs/receivables-mobile-core-review.md와 docs/receivables-mobile-matching-review.md. '
+     '응답 유실 뒤 공백 수정의 키 변경, 지연 GET의 새 결과 덮기, 취소 중 화면 이동 경합은 에이전트 검토에서 발견·수정했다. '
+     '현재 서비스의 FREE 금융 업무는 AI 모델 호출 없이 Java/DB로 처리한다.')
 
 # 5. A large actual demo poster and clearly separated verification categories.
 s = base('시연과 검증', '청구 등록부터 부분 연결·완납·취소 후 잔액 복구까지 실제 API로 확인했습니다.')

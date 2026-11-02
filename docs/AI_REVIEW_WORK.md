@@ -138,3 +138,5 @@ Recorded10 actual Chromium scenes using realJavaAPI+localreconciliation_test and
 UserrequestedexplicitAI-agentdevelopmentdescription. Updated README,PORTFOLIO.md,demoREADME and2-pageoverviewHTML/PDF to state actual roles: userproblem/requirements/constraints/priorities; AIorchestration/analysis/implementation/independentreview/test/assetcreation. Runtime FREE modelcalls remain0; do notconflate developmenttoolswithAIproductcapabilityorclaimunverifiedmanualcoding/productivitypercentages. Reviewed prioruploadedportfolio privately andproduced integrationoutline outside repository; originalslides,portrait,contactsandcompanymaterials notaddedtorepo. Rootvisuallychecked updatedPDF2pagesanddiffcheck. Noapplicationlogicorvideochanged; nofunctionaltestsrerunforthisdocumentationupdate.
 
 포트폴리오 문서·PDF와 시연 영상의 반복 안내 및 편집 주석을 정리했다. 기존 화면·길이는 유지하고 제목과 결과 설명을 줄였다.
+
+발표용 PPT5장과 PDF를 추가했다. README 상단에 AI 에이전트 활용을 명시하고, 소개·설계·검증 문서의 중복 설명과 포트폴리오 계획을 기준 문서 링크로 정리했다.

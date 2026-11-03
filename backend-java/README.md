@@ -2,7 +2,7 @@
 
 이 디렉터리가 실행 단위입니다. 프로젝트 소개는 [../README.md](../README.md), 집계·검토 규칙은 [docs/design.md](docs/design.md)를 봅니다.
 
-`src/main/java/com/smallbiz/reconciliation/learn/`은 거래 비교 키 반복을 가리는 학습 코드입니다. **기존 CSV 업로드·저장·검토에는 연결되어 있지 않습니다.** `TransactionKeyHashSet`과 `TransactionDuplicateChecker`는 구현되어 있고, 같은 패키지의 순수 단위 테스트(2026-10-06, Java 21, 11개 성공)로 확인했습니다. DB가 필요한 통합 테스트는 이 패키지 실행에 포함하지 않았습니다. 자세한 범위는 루트 README의 「학습용 거래 비교 키」를 봅니다.
+`src/main/java/com/smallbiz/reconciliation/learn/`은 거래 비교 키 반복을 가리는 학습 코드입니다. **기존 CSV 업로드·저장·검토에는 연결되어 있지 않습니다.** `TransactionKeyHashSet`과 `TransactionDuplicateChecker`는 구현되어 있고, 같은 패키지의 순수 단위 테스트(2026-10-06, Java 21, 11개 성공)로 확인했습니다. DB가 필요한 통합 테스트는 이 패키지 실행에 포함하지 않았습니다. 자세한 범위는 [기존 대사 문서의 학습용 자료구조 구현](../docs/LEGACY_RECONCILIATION.md#학습용-자료구조-구현)을 봅니다.
 
 ## 준비
 
@@ -20,11 +20,11 @@
 | 테스트 | `TEST_DB_USERNAME` | PostgreSQL 역할 이름 |
 | 테스트 | `TEST_DB_PASSWORD` | 세션에서만 입력 |
 
-스키마는 기동·테스트 시 Flyway V1–V7가 적용합니다. JPA는 `validate`만 합니다. 자동 테스트에서 `reconciliation_test`에 V7이 적용된 것은 확인했습니다. 개발 DB 스키마 버전은 이 문서에서 단정하지 않습니다.
+현재 저장소에는 Flyway V1–V13이 있으며 기동·테스트 시 연결한 DB에 미적용 마이그레이션을 적용합니다. V1–V7은 기존 대사, V8–V13은 계정·사업체와 미수금 기능입니다. JPA는 `validate`만 합니다. 과거 V7 테스트 적용 기록은 아래에 보존하며, 특정 실행 환경의 현재 적용 상태는 별도로 확인해야 합니다.
 
 ## 앱 기동
 
-새 PowerShell에서 `backend-java`로 이동합니다. 현재 수동 확인 환경은 개발 DB `reconciliation_dev`와 포트 **8082**입니다. 8080이 비어 있으면 `--args`를 빼도 됩니다.
+새 PowerShell에서 `backend-java`로 이동합니다. 아래 예시는 개발 DB `reconciliation_dev`와 포트 **8082**를 사용합니다. 8080이 비어 있으면 `--args`를 빼도 됩니다.
 
 ```powershell
 Set-Location "C:\Users\김예은\Desktop\Install\smallbiz-accounting-backend\backend-java"
@@ -52,7 +52,15 @@ finally {
 
 ## 화면
 
-앱을 띄운 뒤 브라우저에서 엽니다. 현재 수동 확인은 `http://localhost:8082/`입니다.
+현재 미수금 화면은 별도 [Expo 앱](../mobile/README.md)입니다. 기본 서버는 계정·사업체 권한을 검사하며 기존 전역 금융 API를 차단합니다. 아래 목록과 합성 CSV·대표 API 예제는 **기존 전역 대사 화면**의 계약입니다.
+
+격리된 로컬 개발에서만 `legacy-dev` 프로파일과 `app.legacy.enabled=true`를 함께 지정하면 익명 개발 예제를 사용할 수 있습니다. 위 DB 환경 변수 설정 후 실행 명령을 다음과 같이 바꿉니다. 공개·공유 서버에는 사용하지 않습니다.
+
+```powershell
+.\gradlew.bat bootRun --args="--server.port=8082 --spring.profiles.active=legacy-dev --app.legacy.enabled=true"
+```
+
+브라우저 주소는 `http://localhost:8082/`입니다. 이 설정도 AI 실행을 허용하지 않습니다. [인증 및 기존 API 경계](../docs/AUTH_FOUNDATION.md)를 참고하세요.
 
 - 거래처: 목록을 보고 등록하거나, 행을 눌러 이름·정산 방식만 수정합니다. 코드는 등록 후 바꿀 수 없습니다.
 - CSV 업로드: 업무·은행을 구분해 파일 한 개를 `file` 필드로 보냅니다. 은행은 기존 6열 CSV 또는 우리은행 거래 표 7열 CSV입니다. 우리은행은 표만 추출한 UTF-8 CSV를 받으며, XLS/XLSX와 계좌 요약 행은 지원하지 않습니다. 안내 문구는 편의를 위한 것이고, 최종 결과는 서버 응답입니다. 실패하면 이번 요청은 저장되지 않습니다.
@@ -93,7 +101,9 @@ finally {
 
 `TEST_DB_*`가 없으면 테스트는 실패하는 것이 정상입니다. HTML 보고서는 `build/reports/tests/test/index.html`입니다.
 
-최근 확인: **2026-10-02 13:15:42** HTML 보고서 기준 실행 45 · 성공 45 · 실패 0 · 건너뜀 0. `BankUploadIntegrationTest` 9개에 우리은행 신규 3개가 포함되어 있습니다. 같은 실행에서 `reconciliation_test`에 V7이 적용되었습니다.
+과거 실행 기록: **2026-10-02 13:15:42** HTML 보고서 기준 실행 45 · 성공 45 · 실패 0 · 건너뜀 0. `BankUploadIntegrationTest` 9개에 우리은행 신규 3개가 포함되어 있습니다. 같은 실행에서 `reconciliation_test`에 V7이 적용되었습니다.
+
+이후 2026-11-01 전체 실행은 **186개, 실패·오류·스킵 0**으로 기록되어 있습니다. [최신 기능 검증 기록](../docs/RECEIVABLES_MOBILE_MATCHING.md#실제-검증캡처)에 실행 범위와 재현 절차가 있습니다. 이번 문서 수정에서 테스트를 다시 실행한 결과는 아닙니다.
 
 ## 합성 CSV 예제
 
@@ -177,6 +187,6 @@ curl.exe -s -X PUT http://localhost:8082/api/v1/reconciliations/daily/2026-09-03
 | 오류 항목 | 응답 최대 100개, 초과 시 `truncated` |
 
 미수금 신규 matching run에는 V13 월별 성공 한도가 적용됩니다. FREE 기본10은 서버 설정 가설이며 STANDARD/PRO 기본0은 명시적 설정 전 신규 실행을 거부합니다. 현재 월 `GET /api/v1/tenants/{tenantId}/matching-usage`, 원자성·재전송·429 계약은 [사용량 문서](../docs/RECEIVABLES_USAGE.md)를 참고하세요. CSV·수동 배분/취소·조회는0차감입니다.
-# Expo 브라우저 연결
+## Expo 브라우저 연결
 
 별도 origin의 Expo 웹은 서버 `app.cors.allowed-origins`에 정확한 주소를 명시한 경우에만 허용합니다. 기본 허용 목록은 비어 있으며 기존 Bearer·사업체 권한 검사를 유지합니다. [Windows/모바일 실행 및 검증](../docs/RECEIVABLES_MOBILE_VALIDATION.md)을 참고하세요. native iOS/Android 요청에는 CORS가 필요하지 않습니다.

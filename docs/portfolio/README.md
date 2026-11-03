@@ -20,3 +20,5 @@ python scripts/render-portfolio-pdf.py
 ```
 
 PPT 생성에는 python-pptx와 Pillow, 소개서 PDF 생성에는 Playwright와 Chromium이 필요합니다. 발표 PDF는 PPT를 LibreOffice 또는 PowerPoint에서 내보내면 됩니다.
+
+2026-11-02 Markdown 문서 검토에서는 PPT·PDF·영상 파일을 재생성하지 않았다. 최신 역할·설계 판단의 출처와 미검증 범위는 [PORTFOLIO.md](../PORTFOLIO.md)를 기준으로 하며, 발표 자료를 다시 배포할 때 이 내용과 대조한다.

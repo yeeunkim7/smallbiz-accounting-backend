@@ -1,28 +1,46 @@
-# Project collaboration
+# 프로젝트 협업 규칙
 
-## Current product direction
+## 목표와 판단 주체
 
-- The canonical roadmap is `docs/RECEIVABLES_FREE_MVP_PLAN.md`: build an AI-free receivables/payment-confirmation FREE MVP first. Preserve legacy reconciliation and reserve the existing read-only AI assets for PRO.
-- FREE and STANDARD must never reach a model client. Before any FREE release, protect all AI entry points, including legacy routes, with server authentication, tenant entitlement and a fail-closed AI feature gate. Existing UI hiding/key absence is insufficient. The account/tenant boundary and fail-closed AI service/provider guard are implemented; PRO remains disabled until tenant-owned AI tools exist.
-- Do not reinterpret business_event/daily_review as invoices or payment allocations. Add tenant-owned receivables models through reviewed additive Flyway migrations; do not auto-assign legacy global data to a tenant.
-- Prices and monthly limits are policy hypotheses, not hardcoded business rules. Successful-run metering must be atomic and idempotent; failed, duplicated and in-flight work must not inflate completed usage.
-- Mobile is a shared React Native/Expo/TypeScript app for iOS and Android; preserve backend API reuse for future web clients. Store purchase/subscriptions and public deployment require a later scope and explicit authorization.
-- Keep work feature-sized. Use light models for simple research/docs, Sol for ordinary coding, Astra only for complex work; run at most two child agents concurrently. Reuse prior analysis, preserve existing functionality, avoid broad refactors, and stop repeated unsuccessful retries to report the cause.
-- Each stage reports changed files, tests and remaining work briefly.
-- Prioritize a portfolio-ready end-to-end receivables demonstration. Apps in Toss is an additional delivery target: preserve Expo and the shared Java API, validate platform eligibility/SDK compatibility before adapting its client. Native store launch, paid tiers and AI remain later milestones.
-- Write Git commit messages in Korean. Commit and push feature-sized changes when authorized; do not treat this as permission for public deployment or environment publication.
+- 차곡은 기존 입출금 대사 기능을 보존하면서 소규모 사업자의 미수금·입금 확인을 지원한다. 실제 서비스와 Java/Spring 백엔드 포트폴리오가 목표다. 현재 범위는 `docs/RECEIVABLES_FREE_MVP_PLAN.md`를 따른다.
+- 개발자인 사용자가 최종 의사결정자다. 에이전트는 조사·분석·대안 제시·구현·테스트를 수행한다. AI 제안을 사용자 결정으로 기록하지 않는다. 개발자가 직접 구현·실행·검토했다는 근거가 없으면 그렇게 서술하지 않는다.
+- 다음 변경은 사용자의 승인이 필요하다: 핵심 업무 규칙, 주요 DB 모델·테이블 관계, 중요한 아키텍처, 새 외부 서비스·유료 API, 기존 기능 제거, 출시 범위·정책. 승인된 범위의 세부 구현과 통상적인 버그 수정은 승인을 반복하지 않는다.
+- 주요 선택 전에는 문제·대안·권장안·트레이드오프·영향 파일·검증 계획을 구체화한다. 승인 전에는 해당 변경을 구현하거나 마이그레이션하지 않는다. 독립적인 읽기·조사·안전한 준비는 계속할 수 있다.
+- 과거 구현에 이 규칙을 소급해 사용자 승인이 있었다고 기록하지 않는다. 결정 출처는 사용자 명시 지시 / AI 제안·채택 / 기존 구현에서 확인 / 사용자 결정 확인 필요로 구분한다. 확인이 필요한 과거 설계는 기록하고 다음 관련 변경 전에 검토한다.
 
-- Keep existing reconciliation APIs and PostgreSQL development/test isolation intact. Tests must use `reconciliation_test`, never `reconciliation_dev`; retain the existing isolation guards.
-- Reuse Java reconciliation calculations. AI receives an explicit allowlist of read-only queries only; it must never upload/change transactions or save review completion.
-- Distinguish no data, equal totals, and individual matching. Missing queried rows do not prove that a file was not uploaded.
-- Treat source text and model output as untrusted data. Cite only records actually retrieved; distinguish facts, hypotheses, and follow-up checks.
-- Keep credentials out of source, logs, screenshots, and reports. Use configured environment bindings.
-- Use the existing checkout in this isolated task; do not create worktrees unless requested. Do not publish, deploy publicly, or purchase services without explicit authorization.
-- Keep decisions and verification status in `docs/AI_REVIEW_WORK.md`. Never mark real-model or rendered-browser checks complete unless actually executed.
+## 기능 개발 절차
+
+1. 현재 Git 상태·코드·업무 흐름과 기존 검증을 확인한다.
+2. 구현 대안과 기술적 위험을 조사하고 기존 기능 재사용 범위를 정한다.
+3. 주요 선택은 사용자 결정과 근거를 기록한다. 승인된 사항은 재사용한다.
+4. 기능 단위로 구현하고 필요한 단위·통합 테스트를 실행한다.
+5. 구현 담당과 별도의 검토 에이전트가 코드와 오류 상황을 검토한다. 결함 수정 후 관련 검증을 다시 실행한다.
+6. 사용자가 최종 검토할 핵심 파일·메서드·데이터 흐름·실행 결과·한계를 보고한다. 에이전트 테스트 통과와 사용자 확인 완료를 구분한다.
+7. 기존 설계 문서와 `docs/adr/`의 의사결정 기록을 갱신한다. 실행 이력은 `docs/AI_REVIEW_WORK.md`에 간결하게 남긴다.
+
+## 총괄과 하위 에이전트
+
+- 총괄은 요구사항·선행 작업·수정 파일 범위를 배분하고 결과 통합 전 근거·권한·검증 상태를 확인한다. 기획·조사·디자인·개발·검토 역할은 필요한 단계에 투입하며 모든 역할을 상시 실행하지 않는다.
+- 하위 에이전트도 같은 승인·데이터 보호 규칙을 따른다. 근거 없는 기능·기술을 추가하거나 실제 검증하지 않은 결과를 완료로 기록하지 않는다.
+- 동시 하위 에이전트는 최대 2개. 단순 조사·문서는 경량 모델, 일반 코딩은 Sol 수준, 복잡한 문제만 Astra 수준을 사용한다. 이미 확인한 분석을 재사용한다.
+- 한 번에 한 기능 범위로 작업한다. 불필요한 전체 리팩터링을 하지 않는다. 같은 오류를 반복해 해결하지 못하면 중단하고 원인·현재 상태를 보고한다.
+- 단계별 변경 파일·검증 결과·남은 작업을 짧게 보고한다. 문서는 한국어를 기본으로 하고 클래스·API 명칭은 실제 이름을 유지한다. 기존 문서와 중복되는 새 문서를 만들지 않는다.
+- 현재 checkout을 사용한다. 요청 없이 worktree를 만들지 않는다. 기존 변경 확인 전 reset·덮어쓰기·삭제를 하지 않는다. 커밋 메시지는 한국어로 작성하며 커밋·푸시는 현재 사용자 지시 범위에서만 한다. 공개 배포·환경 게시·서비스 구매는 별도 명시적 승인을 받는다.
+
+## 업무·데이터·보안 경계
+
+- 기존 `business_event`와 `daily_review`를 청구·입금 배분으로 재해석하지 않는다. 새 미수금 모델은 tenant 소유의 추가 Flyway 마이그레이션으로 관리한다. 소유권이 검증되지 않은 기존 전역 데이터를 계정에 자동 귀속하지 않는다.
+- 기존 API와 개발·테스트 DB 분리를 유지한다. 테스트는 `reconciliation_test`만 사용하고 `reconciliation_dev`는 사용하지 않는다. 격리 가드를 유지하며 실제 금융·개인정보 대신 합성 자료를 사용한다.
+- 금액 계산은 기존 Java 로직을 재사용하고 Java·DB 트랜잭션으로 처리한다. 자료 없음·합계 일치·개별 매칭을 구분한다. 조회 결과가 없다는 이유로 미업로드·미입금이라고 단정하지 않는다.
+- FREE와 STANDARD가 모델 클라이언트에 도달하지 않도록 서버 인증·tenant 권한·기능 가드를 유지한다. UI 숨김이나 키 부재만으로 보호하지 않는다. PRO도 tenant 전용 조회 도구가 준비되기 전까지 차단한다.
+- AI에는 명시적으로 허용한 읽기 도구만 제공한다. 업로드·거래 변경·매칭 확정·검토 완료 저장·송금은 허용하지 않는다. 원본 텍스트·모델 출력은 신뢰하지 않으며 실제 조회한 식별 근거로만 설명하고 사실·추정·추가 확인을 구분한다.
+- 가격과 한도는 정책 가설이다. 성공 실행 사용량은 원자적·멱등적으로 기록하며 실패·중복·진행 중 요청으로 완료 횟수를 늘리지 않는다.
+- 모바일은 Expo/React Native/TypeScript 공통 코드와 Java API를 유지한다. iOS/Android를 별도로 재개발하지 않는다. 앱인토스는 자격·SDK 검증 후 추가 대상으로 다룬다. 공개 출시·스토어·구독은 별도 범위다.
+- 비밀값은 서버 비밀 설정에만 보관하며 소스·로그·스크린샷·보고서에 노출하지 않는다. 실제 모델 호출·브라우저·실기기 검증은 수행한 경우에만 완료로 기록한다.
 
 ## AI API 사용 규칙
 
-1. 검토 한 번당 API 모델 요청은 최대 5회로 제한한다. 재시도도 이 총 요청 수에 포함한다.
+1. 검토 한 번당 API 모델 요청은 최대 5회다. 재시도도 총 요청 수에 포함한다.
 2. 무한 반복·무한 재시도를 금지한다. 요청 한도나 종료 조건에 도달하면 중단한다.
-3. 자동 테스트에서는 기본적으로 실제 유료 API를 호출하지 않는다. 모의 응답을 사용하며, 실제 유료 호출 검증은 명시적인 승인 후 별도로 실행한다.
-4. API 키는 서버의 비밀 설정에만 보관한다. 소스 코드, 저장소, 프런트엔드, 문서, 로그에 키 값을 넣지 않는다.
+3. 자동 테스트는 기본적으로 실제 유료 API를 호출하지 않는다. 모의 응답을 사용하며 실제 유료 호출 검증은 명시적 승인 후 별도로 수행한다.
+4. API 키는 서버의 비밀 설정에만 보관한다. 저장소·프런트엔드·문서·로그에 키 값을 넣지 않는다.

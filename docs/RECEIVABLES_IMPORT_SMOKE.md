@@ -1,5 +1,7 @@
 # 은행 CSV 가져오기 실행·검증
 
+> 문서 범위: 이 문서는 CSV 기능 단계의 실행 기록이다. 본문의 다음 단계·165개 테스트는 당시 기준이다. 이후 사용량과 Expo 구현 상태는 [현재 계획](RECEIVABLES_FREE_MVP_PLAN.md)을 따른다.
+
 ## 로컬 실행
 
 Java21/PostgreSQL17에서 `backend-java/README.md`의 개발 DB 설정과 테스트 DB 분리 규칙을 따른다. 비밀값은 환경 설정으로 주입하며 파일·명령 기록·채팅에 쓰지 않는다. 개발 DB는 `reconciliation_dev`, 자동 검증은 `reconciliation_test`만 사용한다.

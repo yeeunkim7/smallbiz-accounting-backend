@@ -1,5 +1,7 @@
 # 월별 성공 후보 실행 사용량 독립 검토
 
+> 문서 범위: 사용량 기능 단계의 독립 검토 이력이다. 아래 “남은 단계”와 테스트 수치는 당시 기준이며 이후 완료 상태는 [현재 계획](RECEIVABLES_FREE_MVP_PLAN.md)을 따른다. 검증 주체와 근거는 원문대로 보존한다.
+
 2026-11-01. `fe4a2c2` 이후의 matching 변경, `UsageClock/Policy/Service/Controller/Exception`, additive V13, 신규 통합 테스트와 [사용량 계약](RECEIVABLES_USAGE.md)을 검토했다. 검토자는 소스와 실행 산출물을 직접 읽었으며 DB 테스트·전체 빌드·HTTP 요청·유료 모델 호출을 중복 실행하지 않았다.
 
 ## 현재 판단

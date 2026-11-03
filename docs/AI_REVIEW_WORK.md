@@ -1,8 +1,14 @@
-# Read-only AI reconciliation review
+# 개발 작업 기록
 
-Updated: 2026-11-01 (Asia/Seoul).
+## 현재 상태와 기록 읽는 법
 
-> Product direction superseded on 2026-11-01: see [FREE receivables MVP plan](RECEIVABLES_FREE_MVP_PLAN.md). This file preserves the historical AI work. AI is a future PRO asset; actual-model validation is not a FREE launch prerequisite. Current priority is tenant/authentication, exact receivables allocation, success-only usage, then shared Expo mobile. Account/tenant authentication and FREE/STANDARD AI denial are now implemented at HTTP, service and provider boundaries. PRO remains denied until tenant-owned AI tools exist; overall FREE receivables functionality is still under development.
+2026-11-02 (Asia/Seoul) 문서 검토 기준. 기존 입출금 대사에서 FREE 미수금 기능으로 확장했다. V8~V13 인증·등록·배분·후보·CSV·사용량과 Expo 등록/확정/취소 흐름, 포트폴리오·영상이 추가됐다. 현재 API·범위는 [개발 계획](RECEIVABLES_FREE_MVP_PLAN.md), 판단 주체는 [ADR](adr/0002-receivables-decisions.md)에 있다.
+
+2026-11-01 최종 기능 검증 기록은 backend 186, client 13, 실제 브라우저 신규 9+기존 9다. 각 단계의 56/88/104 등 수치는 당시 실행 기록이며 이번 문서 수정에서 재실행하지 않았다. FREE/STANDARD는 모델을 호출할 수 없고 PRO도 tenant 전용 도구 미비로 차단한다. 실제 모델·실기기·공개 서비스 검증은 미완료다.
+
+아래 원문은 초기 AI 검토 개발부터 이어진 이력이다. 과거의 “현재”, “다음”, 미구현 상태는 당시 시점이며 현재 계획을 뜻하지 않는다. 기존 영어 기록과 날짜·수치·오류 근거를 보존한다. 최초 상단의 갱신일은 2026-11-01 (Asia/Seoul)이었고, 방향 전환 시점의 “전체 FREE 기능 개발 중” 설명은 이 현재 요약으로 대체한다.
+
+## 보존된 단계별 작업 이력
 
 ## Objective and scope
 
@@ -144,3 +150,7 @@ UserrequestedexplicitAI-agentdevelopmentdescription. Updated README,PORTFOLIO.md
 AI 활용 설명을 실제 사용자 지시(업무 규칙·역할 분담·모델/동시 실행 제한·실행 검증 요청)와 에이전트 수행 내용으로 구체화했다. README와 PORTFOLIO.md, 발표 PPT 4장을 갱신하고 PDF를 다시 내보냈다. 사용자 판단과 에이전트의 구현·결함 발견·검증 실행을 구분했다. 5장 구성과 렌더링을 확인했으며 기능 코드는 변경하지 않아 애플리케이션 테스트는 재실행하지 않았다.
 
 사용자 피드백에 따라 AI 활용 설명의 중심을 Codex 선택 이유, 총괄과 역할별 하위 에이전트의 책임·산출물, 조사/분석부터 구현·독립 검토·수정·재검증까지의 진행 방식으로 재작성했다. 모델 종류·사용량 중심 설명을 걷어내고 기존 대사 시스템 보존과 미수금 확장, 실제 결함 재현 사례 및 근거 문서를 연결했다. README·PORTFOLIO.md·PPT 4장/PDF에 반영했다. 문서 링크·5장 구성·PDF 렌더링 확인 완료. 기능 변경과 애플리케이션 테스트 재실행은 없다.
+
+## 2026-11-02 문서·개발 절차 정리
+
+README는 서비스·기술 중심, PORTFOLIO는 문제·판단 주체·코드·검증 근거 중심으로 재구성했다. AGENTS에 주요 변경 승인과 구현 후 개발자 검토 절차를 추가했다. 기존 AI 설계 선택에 사용자 승인을 소급하지 않았다. 현재 구현과 과거 계획을 구분하고 기존 테스트·날짜·결함 기록을 보존했다. 범위는 Markdown이며 기능·DB·테스트 데이터·PPT·영상은 변경하지 않았다. 문서 점검 결과는 DOCUMENTATION_REVIEW.md를 참조한다.

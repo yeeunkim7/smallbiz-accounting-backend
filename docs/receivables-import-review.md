@@ -1,5 +1,7 @@
 # Tenant 은행 CSV 가져오기 독립 검토
 
+> 문서 범위: CSV 기능 단계의 독립 검토 이력이다. 아래 “남은 단계”와 테스트 수치는 당시 기준이며 이후 완료 상태는 [현재 계획](RECEIVABLES_FREE_MVP_PLAN.md)을 따른다. 검증 주체와 근거는 원문대로 보존한다.
+
 2026-11-01. 검토 대상은 새 `receivables.bankimport` package, additive V12, malformed multipart 공통 오류 처리, 신규 통합 테스트와 [API 계약](RECEIVABLES_IMPORT.md)이다. 기존 등록·배분 경계는 연동에 필요한 범위에서 읽었다. 검토자는 소스와 실행 산출물을 읽었으며 DB 테스트·전체 빌드·유료 모델 호출을 중복 실행하지 않았다.
 
 ## 현재 판단

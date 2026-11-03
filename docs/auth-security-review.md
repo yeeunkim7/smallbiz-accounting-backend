@@ -8,8 +8,8 @@
 
 ## 발견 사항과 수정 확인
 
-1. 최초 AI policy는 principal만 확인해 이미 필터를 통과한 세션의 폐기·만료를 다시 읽지 않았다. 개발자에게 전달했고, `AuthService.requireActiveSession()`이 세션 hash·account ID·폐기 여부·서버 시각 만료를 DB에서 재검증하도록 수정한 코드를 확인했다. `me`, tenant 조회와 AI policy가 이 검증을 사용한다. AI 서비스의 시작·최초 금융 조회·각 provider round·각 tool 조회·마지막 summary 재조회와 provider의 직접 호출에도 policy가 있다.
-2. 첫 가입 테스트는 account INSERT 중복만 검사해 후반 실패 롤백 증거가 부족했다. 개발자에게 전달했고 최종 session INSERT를 강제 실패시켜 네 신규 테이블이 모두 비어 있는지 확인하는 테스트를 추가한 것을 확인했다. 이 테스트는 격리가드가 있는 테스트 DB에 임시 CHECK를 설치하고 finally에서 제거한다.
+1. 최초 AI policy는 principal만 확인해 이미 필터를 통과한 세션의 폐기·만료를 다시 읽지 않았다. 구현 담당 에이전트에게 전달했고, `AuthService.requireActiveSession()`이 세션 hash·account ID·폐기 여부·서버 시각 만료를 DB에서 재검증하도록 수정한 코드를 확인했다. `me`, tenant 조회와 AI policy가 이 검증을 사용한다. AI 서비스의 시작·최초 금융 조회·각 provider round·각 tool 조회·마지막 summary 재조회와 provider의 직접 호출에도 policy가 있다.
+2. 첫 가입 테스트는 account INSERT 중복만 검사해 후반 실패 롤백 증거가 부족했다. 구현 담당 에이전트에게 전달했고 최종 session INSERT를 강제 실패시켜 네 신규 테이블이 모두 비어 있는지 확인하는 테스트를 추가한 것을 확인했다. 이 테스트는 격리가드가 있는 테스트 DB에 임시 CHECK를 설치하고 finally에서 제거한다.
 3. `capabilities`의 기존 `model` 필드 제거를 알렸고, provider를 조회하지 않는 빈 문자열 필드로 유지한 코드를 확인했다. 계정 저장 오류는 controller의 안전한 503 응답으로 변환하며 SQL 예외 상세를 기록하지 않는다.
 
 ## 확인한 경계와 검증 코드

@@ -1,13 +1,15 @@
 # 입출금·정산 대사 시스템 설계
 
-Java 백엔드 MVP 설계다. 인증 없는 로컬 개발용이며 가상 거래처·합성 데이터만 사용한다.
+기존 V1–V7 입출금 대사 모듈의 설계·API 계약이다. 현재 전체 서비스에는 V8 인증·사업체 경계와 V9–V13 미수금 기능이 추가됐다. 전체 구성은 [현재 아키텍처](../../docs/architecture.md)를 따른다.
+
+기존 전역 API는 기본적으로 차단하며 `legacy-dev` 프로필과 `app.legacy.enabled=true`를 함께 지정한 격리 로컬 개발 환경에서만 익명 호출을 허용한다. 공개 서버에 이 설정을 적용하지 않으며 합성 데이터만 사용한다.
 
 선택 버전: **Java 21**, **Spring Boot 4.1.1** (공식 시스템 요구사항: Java 17–26, Gradle 8.14+ 및 9.x). Preview/snapshot은 사용하지 않는다.
 
 ## 현재 구현 / 후속 구현
 
 - 구현됨: 애플리케이션 기동, `GET /health`, 거래처, 업무·은행 CSV 업로드, 일별·월별 집계, 날짜별 원본·업로드 이력 조회, **날짜별 검토 상태·메모**.
-- 후속: 화면.
+- 기존 대사 웹 화면도 구현돼 있다. 신규 Expo 미수금 화면의 범위와 남은 실기기 검증은 [모바일 문서](../../docs/RECEIVABLES_MOBILE_CORE.md)를 참고한다.
 
 원본 CSV 바이트는 보관하지 않는다. 업로드 메타데이터와 정규화된 행만 저장하므로 원본 파일 재다운로드는 제공하지 않는다.
 
@@ -132,7 +134,7 @@ CHARGE_EXPECTED는 PREPAID, SETTLEMENT_EXPECTED는 POSTPAID만. REFUND_EXPECTED�
 - 필수값·날짜·금액·유형 오류가 있으면 파일 전체를 저장하지 않는다.
 - 오류 응답 `fieldErrors`: `rowNumber`(헤더=1인 CSV 레코드 번호, 파일 전체 오류는 null), `field`, `message`. 100개를 넘으면 `truncated: true`.
 - 애플리케이션 사전 검사와 DB UNIQUE를 함께 사용한다.
-- 검토 상태는 이번 범위에서 저장하지 않는다. 업로드 이력과 원본 행만 한 트랜잭션으로 저장한다.
+- 업로드 이력과 원본 행 저장 및 영향 날짜의 검토 상태 갱신은 한 트랜잭션이다. V6 이후 `REVIEWED`를 `NEEDS_RECHECK`로 바꾸는 규칙은 아래 검토 상태 절을 따른다.
 
 ## 일별·월별 집계 조회
 
@@ -205,7 +207,7 @@ PUT은 같은 행을 `FOR UPDATE`한 뒤 요청 `version`과 비교한다. 다�
 
 ## 테이블 (후속 포함)
 
-현재 Flyway: V1 vendor, V2 upload_file·business_event, V3 SHA VARCHAR, V4 BANK·bank_transaction, V5 조회용 날짜 인덱스, V6 daily_review, V7 은행 거래일시·잔액·거래구분·취급점(기존 행은 NULL).
+이 모듈의 Flyway 범위: V1 vendor, V2 upload_file·business_event, V3 SHA VARCHAR, V4 BANK·bank_transaction, V5 조회용 날짜 인덱스, V6 daily_review, V7 은행 거래일시·잔액·거래구분·취급점(기존 행은 NULL).
 
 | 테이블 | 역할 | 유일성 |
 | --- | --- | --- |

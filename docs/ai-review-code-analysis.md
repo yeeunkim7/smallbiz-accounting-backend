@@ -1,5 +1,7 @@
 # Existing code and integration boundary
 
+> 문서 범위: 초기 코드 분석 이력이다. 아래 HEAD·테스트 수와 기능 미존재는 당시 상태다. 988a983은 사용자가 미커밋 작업이었다고 확인해 GitHub 기준으로 진행했으며 추가 SHA 요청은 해결됐다. 현재 구조는 [아키텍처](architecture.md)를 따른다.
+
 Inspected 2026-10-31. Starting HEAD: `580adf5d496b5c59093d3075548dd7897eed8c23`.
 
 ## Requested commit comparison

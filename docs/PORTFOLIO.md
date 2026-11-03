@@ -75,3 +75,5 @@ AI가 구현과 테스트 실행을 수행했으며, 독립 검토도 AI 에이�
 - **개발자 확인 필요:** 세부 DB·잠금·사용량 설계의 유지 판단과 핵심 코드 이해·최종 검토 기록. 기존 AI 실행 결과와 구분해 앞으로 남깁니다.
 
 [발표 PPT · 5장](portfolio/chagok-project.pptx) · [PDF](portfolio/chagok-project.pdf) · [영상 안내](demo/README.md) · [기본 화면 검증](RECEIVABLES_MOBILE_VALIDATION.md)
+
+[핵심 코드 학습·발표 질문](PORTFOLIO_LEARNING.md): 업무 모델, 멱등성과 동시성, 확정·취소를 실제 코드로 확인한다. 학습 완료는 사용자 설명과 검토 후 기록한다.

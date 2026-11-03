@@ -17,7 +17,7 @@ from pptx.util import Inches, Pt
 ROOT = Path(__file__).resolve().parents[1]
 OUT = ROOT / 'docs' / 'portfolio'
 REPO = 'https://github.com/yeeunkim7/smallbiz-accounting-backend'
-BASE = REPO + '/blob/feat/mobile-matching-review/'
+BASE = REPO + '/blob/main/'
 VIDEO = BASE + 'docs/demo/receivables-demo.mp4'
 FONT = 'Noto Sans CJK KR'
 C = dict(bg='FFFFFF', navy='23334D', text='34435A', muted='65738A', blue='3A59D1',
@@ -118,134 +118,100 @@ def image(s, path, x, y, w=None, h=None, crop=None, link=None):
     return shape
 
 
-# 1. Product overview: actual server-connected browser UI, cropped only for legibility.
-s = base('차곡 | 미수금·입금 확인', ai=True)
-text(s, '청구와 입금을 연결하고,\n남은 금액을 확인합니다.', .72, 1.98, 7.7, 1.15, 28, 'navy', True)
-text(s, '부분 입금과 묶음 입금이 생기는 후불 거래에서\n근거와 현재 잔액을 보고 사용자가 직접 확정합니다.',
-     .74, 3.25, 7.55, .92, 20)
-steps = [('01', '청구·입금 등록'), ('02', '연결 후보 검토'), ('03', '직접 확정·취소')]
-for i, (num, label) in enumerate(steps):
-    x = .74 + i * 2.59
-    rect(s, x, 4.55, 2.38, .91, 'pale', radius=True)
-    text(s, num, x + .14, 4.67, .4, .35, 18, 'blue', True)
-    text(s, label, x + .14, 5.04, 2.15, .36, 18, 'navy', True)
-text(s, '서버  Java 21 · Spring Boot · PostgreSQL · Flyway', .74, 5.97, 7.7, .42, 18)
-text(s, '앱  React Native · Expo · TypeScript', .74, 6.42, 7.7, .42, 18)
-rect(s, 9.09, 1.89, 3.48, 4.98, 'light', 'line', radius=True)
-# Crop to the complete balance card; preserve all original financial values.
-image(s, 'docs/screenshots/mobile-core-live-home.png', 9.19, 1.99, w=3.28, h=4.84,
-      crop=(0, 80, 390, 655))
-note(s, '개요 근거: README.md, docs/PORTFOLIO.md, mobile/README.md. 차곡은 기록을 차곡차곡 정리한다는 이름이다. '
-     '화면은 docs/screenshots/mobile-core-live-home.png의 상단을 크롭한 실제 Chromium 모바일 viewport 캡처이며 합성 테스트 자료/실제 Java API 연결이다. '
-     '캡처의 100,000원 미수와 미연결 입금 40,000원은 배분 전 서로 다른 수치이며 재구성하지 않았다. '
-     '개발은 사용자 요구·제약·우선순위에 따라 AI 에이전트의 분석·구현·독립 검토를 활용했다. 개인의 수동 코딩 비율은 주장하지 않는다. '
-     '앱 소스는 iOS/Android 공용 React Native/Expo이며 이 캡처는 네이티브 실행 증거가 아니다.')
+# 1. Problem, choice of development environment, and actual product screen.
+s = base('차곡 | AI 에이전트와 개발한 대사 시스템', ai=True)
+text(s, '하루의 금액 비교에서\n청구별 미수금 확인으로', .75, 1.99, 7.65, 1.1, 28, 'navy', True)
+text(s, '합계가 같아도 어떤 청구가 지급됐는지는 알 수 없습니다.\n기존 Java 대사 기능을 보존하고 청구·입금 연결로 확장했습니다.', .77, 3.23, 7.65, .92, 19)
+text(s, 'Codex를 선택한 이유', .77, 4.42, 7.5, .43, 23, 'blue', True)
+for i, label in enumerate(['기존 코드·DB·테스트를 같은 작업 공간에서 분석',
+                           '수정 → 명령 실행 → 검증 → Git 기록까지 연결',
+                           '총괄과 하위 에이전트의 결과를 한 프로젝트에 통합']):
+    text(s, label, .79, 5.03+.49*i, 7.5, .39, 18)
+rect(s, 9.09, 1.93, 3.48, 4.99, 'light', 'line', True)
+image(s, 'docs/screenshots/mobile-core-live-home.png', 9.19, 2.03, w=3.28, h=4.84, crop=(0,80,390,655))
+note(s, '발표: 기존 입출금 대사는 날짜별 금액 차이를 확인하는 시스템이었습니다. 저는 이 프로젝트를 소규모 사업자의 청구별 미수금 확인으로 확장하도록 목표를 정했습니다. '
+     '기존 코드를 보존하면서 분석, 수정, 테스트 실행을 이어갈 수 있어 Codex를 활용했습니다. 총괄 아래 역할을 나누고 그 결과를 같은 저장소에 통합하는 방식으로 진행했습니다. '
+     '근거: README.md, docs/PORTFOLIO.md. 캡처는 합성 자료/실제 Java API에 연결한 Chromium 모바일 viewport이며 실기기 증거가 아닙니다. '
+     '다른 AI 도구와의 성능 비교나 생산성 배수는 측정하지 않았습니다.')
 
-# 2. Shared architecture and the financial domain, all editable PowerPoint shapes.
-s = base('아키텍처와 금융 도메인', '화면은 입력·검토를, 서버와 DB는 소유권·금액·확정을 담당합니다.')
-for x, title, body in [(.74, 'React Native · Expo', '입력 · 검토 · 사용자 확정'),
-                       (4.91, 'Java · Spring Boot', '인증 · 권한 · 잔액 검사'),
-                       (9.08, 'PostgreSQL · Flyway', '원본 · 배분 · 취소 이력')]:
-    rect(s, x, 2.42, 3.51, 1.23, 'pale', radius=True)
-    text(s, title, x+.18, 2.62, 3.15, .4, 20, 'navy', True)
-    text(s, body, x+.18, 3.13, 3.18, .36, 18)
-arrow(s, 4.41, 2.92); arrow(s, 8.58, 2.92)
-text(s, '청구와 입금 사이에 배분 원장을 둡니다.', .75, 4.03, 11.9, .48, 23, 'navy', True)
-for y, title in [(4.93, '청구  Invoice'), (5.86, '입금  Payment')]:
-    rect(s, .75, y, 2.55, .68, 'light', 'line', True)
-    text(s, title, .92, y+.17, 2.2, .36, 19, 'navy', True)
-line(s, 3.3, 5.27, 3.65, 5.27, 'blue'); line(s, 3.3, 6.2, 3.65, 6.2, 'blue')
-line(s, 3.65, 5.27, 3.65, 6.2, 'blue'); arrow(s, 3.65, 5.61, .44)
-rect(s, 4.23, 5.01, 3.15, 1.36, 'pale', radius=True)
-text(s, '배분  Allocation', 4.43, 5.23, 2.75, .4, 21, 'blue', True)
-text(s, '부분 · 묶음 · 분할 연결', 4.43, 5.83, 2.75, .36, 18)
-arrow(s, 7.62, 5.61, .45)
-rect(s, 8.3, 4.93, 4.28, 1.61, 'light', 'line', True)
-text(s, '활성 배분 → 현재 잔액', 8.52, 5.15, 3.84, .4, 21, 'navy', True)
-text(s, '취소 이력 추가 → 잔액 복구', 8.52, 5.84, 3.84, .4, 19)
-note(s, '근거: docs/architecture.md, docs/receivables-erd.md, AllocationService.java. '
-     '계정 세션 및 tenant membership을 서버에서 확인한다. 금액은 PostgreSQL BIGINT 원화 정수, Java BigInteger 정확 합산, API decimal string이다. '
-     '취소는 원본/배분 행 삭제가 아닌 별도 cancellation 및 audit 이벤트 추가다. 배분되지 않은 입금은 미수를 줄이지 않는다. '
-     '기존 전역 대사 모듈은 별도 테이블에 유지되며 이 그림은 현재 tenant 미수금 흐름을 요약한다. '
-     'iOS/Android 공용 클라이언트 소스를 유지하며 이번 확인은 브라우저 경로다.')
+# 2. Development organization: developer decisions and delegated execution.
+s = base('총괄 아래 역할을 나누고, 검토 결과를 다시 구현에 반영', '개발자: 목표·업무 규칙·완료 기준  /  에이전트: 분석·설계·구현·검증 실행')
+rect(s, 3.82, 2.35, 5.68, .69, 'blue', radius=True)
+text(s, '총괄 에이전트 · 작업 배분과 결과 통합', 3.95, 2.53, 5.42, .36, 20, 'FFFFFF', True, align=PP_ALIGN.CENTER)
+line(s, 6.66, 3.04, 6.66, 3.34, 'blue')
+line(s, 1.81, 3.34, 11.53, 3.34, 'blue')
+roles=[('기획·분석','기존 코드·DB\n범위·도메인'),('자료조사','사용자 문제\n대체 서비스'),('디자인','업무·화면 흐름\n상태·근거 표시'),('개발','기능별 변경\nAPI·모바일'),('독립 검토','오류 재현\n수정·재검증')]
+for i,(title,body) in enumerate(roles):
+    x=.75+2.43*i
+    line(s,x+1.06,3.34,x+1.06,3.6,'blue')
+    rect(s,x,3.6,2.11,1.49,'light','line',True)
+    text(s,title,x+.1,3.78,1.91,.4,21,'blue',True,align=PP_ALIGN.CENTER)
+    text(s,body,x+.1,4.28,1.91,.66,17,align=PP_ALIGN.CENTER)
+text(s,'조사·분석 → 범위·설계 → 기능별 구현 → 독립 검토 → 수정·재검증', .8,5.5,11.7,.5,21,'navy',True,align=PP_ALIGN.CENTER)
+text(s,'업무 원칙  |  Java 금액 계산 · 사용자 확정 · 원본 보존 · FREE AI 호출 없음', .81,6.27,11.65,.45,19)
+note(s, '발표: 저는 업무 규칙과 완료 기준을 정하고, 총괄이 기획·조사·디자인·개발·검토를 조율하도록 요청했습니다. '
+     '조사와 코드 분석처럼 독립적인 일은 병행하고, 화면 구현은 도메인과 API 설계 결과를 받아 연결했습니다. 구현 담당과 검토 담당을 나누고 발견된 오류를 다시 수정하도록 했습니다. '
+     '역할은 책임 구분이며 모든 역할이 동시에 상시 실행된 것은 아닙니다. 기획은 총괄·업무 분석과 함께 수행했습니다. '
+     '구체 DDL과 잠금 전략은 에이전트 설계/구현이며 사용자 직접 선택으로 소급하지 않습니다. 근거: docs/AI_REVIEW_WORK.md, AGENTS.md, docs/adr/0002-receivables-decisions.md.')
 
-# 3. Concrete integrity mechanisms and the actual uncertain-response test.
-s = base('문제 해결 | 동시 요청과 응답 유실', '한 입금을 초과 배분하거나, 같은 요청이 중복 저장되지 않도록 설계했습니다.')
-rect(s, .74, 2.38, 5.75, 4.25, 'light', radius=True)
-rect(s, 6.81, 2.38, 5.78, 4.25, 'pale', radius=True)
-text(s, '동시 요청의 초과 배분 방지', .98, 2.65, 5.24, .43, 23, 'navy', True)
-for y, n, t in [(3.48, '01', '입금 → 청구, 같은 순서로 잠금'),
-                 (4.37, '02', '현재 잔액과 요청 합계 재검사'),
-                 (5.26, '03', '가용액 초과 시 전체 롤백')]:
-    text(s, n, 1.0, y, .5, .4, 20, 'blue', True)
-    text(s, t, 1.62, y, 4.42, .45, 20)
-text(s, '응답을 받지 못해도 같은 요청으로', 7.05, 2.65, 5.3, .43, 23, 'navy', True)
-text(s, 'Idempotency-Key + 정규화 요청 해시', 7.07, 3.4, 5.03, .4, 20, 'blue', True)
-text(s, '실제 저장 후 응답만 503으로 변경\n탭 왕복 후 같은 키로 다시 확정', 7.07, 4.05, 4.99, .98, 20)
-text(s, '요청 2회', 7.07, 5.48, 2.0, .6, 28, 'navy', True)
-arrow(s, 9.29, 5.65, .5)
-text(s, '배분 1개', 10.0, 5.48, 2.1, .6, 28, 'blue', True)
-note(s, '근거: docs/architecture.md, docs/receivables-mobile-matching-review.md 및 '
-     'scripts/verify-mobile-matching-browser.py actualPartialConfirmUncertainResponseSameKeyAcrossTabsNoDuplicate. '
-     '실제 local reconciliation_test Java API에 40,000원 부분 연결 commit 후 첫 POST 응답만 Playwright route로 503으로 바꾼다. '
-     '사용자가 계정 탭을 왕복한 뒤 같은 key로 재시도해 두 요청/한 allocation batch를 확인했다. '
-     '실제 서버 테스트의 초기 미수는 두 청구 총 150,000원이고 부분 연결 후 110,000원, 취소 후 150,000원이다. '
-     '데모 영상의 단일 청구 100,000원 시나리오와 구분한다. 잠금은 부모 입금·청구 ID 순서로 일관되게 수행한다. '
-     '같은 키에 다른 내용을 보내면 충돌 처리한다. 저장된 명령 응답과 현재 상태 조회를 분리한다. '
-     '확정 재생 응답이 과거 v1이더라도 현재 GET은 취소 v2를 반환할 수 있다. 성능 수치나 처리량 주장은 하지 않는다. '
-     '검증 기록 기준일 2026-11-01.')
+# 3. Runtime architecture and the resulting features.
+s = base('결과물 | 청구·입금 연결과 미수금 확인', '기존 대사 데이터를 보존하고, 사업체별 청구·입금·배분 모델을 추가했습니다.')
+for x,title,body in [(.75,'React Native · Expo','입력 · 근거 확인 · 확정 요청'),(4.91,'Java · Spring Boot','권한 · 잔액 검사 · 확정'),(9.07,'PostgreSQL · Flyway','원본 · 배분 · 취소 · 감사')]:
+    rect(s,x,2.39,3.51,1.25,'pale',radius=True)
+    text(s,title,x+.16,2.61,3.19,.4,20,'navy',True)
+    text(s,body,x+.16,3.13,3.19,.35,17)
+arrow(s,4.4,2.91);arrow(s,8.56,2.91)
+text(s,'서버 호출 흐름  Controller → Service → JdbcTemplate(SQL) → DB',.78,3.98,11.8,.45,20,'muted')
+features=[('등록과 원본','청구·입금 직접 등록\n은행 CSV API·중복 추적'),('연결과 잔액','부분·묶음·분할 입금\n미수·기한 초과 잔액'),('취소와 권한','사유 있는 취소·감사\n사업체 격리·성공 이용량')]
+for i,(title,body) in enumerate(features):
+    x=.75+4.16*i
+    rect(s,x,4.7,3.51,1.5,'light','line',True)
+    text(s,title,x+.18,4.88,3.15,.4,21,'blue',True)
+    text(s,body,x+.18,5.41,3.15,.64,18)
+text(s,'청구 100,000원 → 40,000원 연결 → 미수 60,000원', .81,6.5,10,.38,21,'navy',True)
+text(s,'시연 영상 ↗',10.7,6.5,1.88,.4,19,'blue',True,link=VIDEO)
+note(s,'발표: 화면은 입력과 검토를 담당하고 금액과 확정은 서버·DB가 처리합니다. 신규 미수금 모듈은 Controller에서 Service, JdbcTemplate SQL로 이어집니다. '
+     '기존 대사 모듈의 JPA Repository와 구분합니다. 입금을 등록하거나 후보를 만든 것만으로 미수가 줄지 않으며 사용자가 연결을 확정해야 반영됩니다. '
+     '원본과 배분 line은 보존하고 취소·감사를 추가하며 조회 상태와 버전을 파생합니다. 은행 CSV는 API 구현이며 모바일 업로드 화면은 후속입니다. '
+     '근거: docs/architecture.md, docs/receivables-erd.md, docs/RECEIVABLES_ALLOCATION.md. 영상: '+VIDEO)
 
-# 4. Repository-based orchestration and independent verification.
-s = base('Codex로 구성한 에이전트 개발 체계', '선택 이유 · 기존 저장소의 분석·수정·실행·검증을 한 작업 공간에서 연결')
-rect(s, .75, 2.36, 11.83, .61, 'pale', radius=True)
-text(s, '나: 문제·업무 규칙·완료 기준 결정  →  총괄: 작업 배분·결과 통합', .95, 2.51, 11.43, .36, 20, 'navy', True, align=PP_ALIGN.CENTER)
-roles = [('기획·분석', '기존 코드·DB\n도메인·범위'), ('자료조사', '사용자 문제\n서비스 비교'),
-         ('디자인', '업무·화면 흐름\n상태·근거 표시'), ('개발', '기능별 구현\nAPI·모바일'), ('독립 검토', '업무·오류 경계\n재현·수정 요구')]
-for i, (title, body) in enumerate(roles):
-    x = .75 + 2.43*i
-    rect(s, x, 3.29, 2.11, 1.55, 'light', 'line', True)
-    text(s, title, x+.1, 3.45, 1.91, .4, 21, 'blue', True, align=PP_ALIGN.CENTER)
-    text(s, body, x+.1, 3.97, 1.91, .65, 17, align=PP_ALIGN.CENTER)
-text(s, '조사·분석 → 범위·설계 → 기능별 구현 → 독립 검토 → 수정·재검증', .8, 5.06, 11.7, .5, 21, 'navy', True, align=PP_ALIGN.CENTER)
-rect(s, .75, 5.85, 11.83, 1.08, 'pale', radius=True)
-text(s, '검토 사례  |  응답 유실 후 재시도에서 중복 저장 위험 발견', .96, 5.98, 11.4, .35, 20, 'blue', True)
-text(s, '요청 키 유지 방식 수정 → 실제 DB 저장 후 오류 응답 재현 → 입금 1건 확인', .96, 6.4, 11.4, .33, 18)
-note(s, '기존 Java/Spring Boot 대사 시스템의 데이터와 계산 규칙을 보존하며 미수금 관리로 확장했다. '
-     'Codex를 활용한 이유는 기존 저장소 분석, 파일 수정, 명령 실행, DB/브라우저 검증과 Git 이력을 같은 작업 공간에서 연결할 수 있기 때문이다. 타 도구 대비 성능이나 생산성 배수를 주장하지 않는다. '
-     '사용자는 문제 정의, 업무 제약, 완료 기준과 우선순위를 정했다. 총괄 에이전트는 작업을 배분하고 선행 결과와 변경 파일 충돌을 조정했다. '
-     '하위 역할은 기획/업무 분석, 자료조사, 디자인, 개발, 독립 검토다. 기획은 총괄/분석과 함께 수행했고 모든 역할을 동시에 상시 실행한 것은 아니다. '
-     '조사와 코드 분석을 병행하고, 도메인/API 설계를 화면 구현에 전달했다. 기능 단위 구현 후 별도 검토자가 결함을 재현하고 수정 후 다시 검증했다. '
-     '금액 계산과 확정은 Java/DB에 두고 후보와 확정을 구분했다. 기존 business_event/daily_review의 의미를 유지하면서 미수금 도메인을 확장했다. '
-     '구체적 사례는 기본 화면의 응답 유실 뒤 공백 수정 시 요청 키 변경 결함이다. 에이전트가 발견/수정했고 실제 commit 후 503 응답을 재현한 재시도에서 같은 키와 입금 한 건을 확인했다. '
-     '근거: docs/PORTFOLIO.md, docs/AI_REVIEW_WORK.md, docs/receivables-mobile-core-review.md. 사용자에게 수동 구현/오류 발견을 귀속하지 않는다. '
-     '2026-11-01 검증 기록을 인용한다. 현재 FREE 기능은 모델 호출 없이 동작하며 제품의 PRO AI 실제 모델 및 모바일 실기기 검증은 후속 대상이다.')
+# 4. Concrete defect, repair, and bounded verification evidence.
+s=base('검토가 실제 수정으로 이어진 사례','서버가 저장한 뒤 응답이 끊기면, 재시도를 새 거래로 저장할 위험이 있습니다.')
+steps=[('발견','공백만 수정해도\n요청 키가 바뀜'),('수정','정규화한 내용이 같으면\n같은 요청 키 유지'),('재검증','DB 저장 후 503 재현\n재시도해도 입금 1건')]
+for i,(title,body) in enumerate(steps):
+    x=.75+4.16*i
+    rect(s,x,2.48,3.51,1.65,'light','line',True)
+    text(s,title,x+.18,2.68,3.15,.42,23,'blue',True)
+    text(s,body,x+.18,3.25,3.15,.7,19)
+    if i<2:arrow(s,x+3.66,3.17)
+text(s,'금액 정합성은 별도의 서버 검증으로 확인',.79,4.51,11.8,.46,23,'navy',True)
+text(s,'같은 입금의 동시 배분 · 잔액 초과 거부 · 취소 복원 · 감사 저장 실패 롤백',.8,5.1,11.7,.45,20)
+rect(s,.75,5.86,11.83,.93,'pale',radius=True)
+text(s,'백엔드 186개  ·  클라이언트 13개  ·  실제 브라우저 9 + 9개',.97,6.04,11.4,.39,22,'blue',True)
+text(s,'2026.11.01 실행 기록',.99,6.5,11.1,.29,16,'muted')
+note(s,'발표: 검토에서 찾은 문제는 사용자 입력의 공백 변화가 멱등성 키까지 바꾸는 것이었습니다. 내용이 같아도 서버가 새 요청으로 볼 수 있어 정규화한 입력으로 키를 유지하도록 수정했습니다. '
+     '에이전트가 실제 DB 저장 후 응답만 503으로 바꾸고 같은 키로 재시도해 입금 한 건을 확인했습니다. 발견·구현·테스트 실행은 에이전트가 수행했습니다. '
+     '소스: mobile/src/forms.tsx Registration.submit, mobile/src/commands.ts CommandKey.forPayload, ReceivablesService.replayOrCreate. '
+     '동시 배분과 롤백은 AllocationIntegrationTest로 별도 검증했습니다. 숫자는 2026-11-01 기록이며 이번 PPT 작업의 새 실행 결과가 아닙니다. '
+     '실제 브라우저는 신규 matching9+core9이며 독립 UI fixture11과 구분합니다. docs/receivables-mobile-core-review.md, docs/RECEIVABLES_MOBILE_MATCHING.md 참고.')
 
-# 5. A large actual demo poster and clearly separated verification categories.
-s = base('시연과 검증', '청구 등록부터 부분 연결·완납·취소 후 잔액 복구까지 실제 API로 확인했습니다.')
-rect(s, .74, 2.32, 6.42, 4.42, 'light', 'line', True)
-image(s, 'docs/demo/poster.png', 1.13, 2.41, w=5.64, h=4.23, link=VIDEO)
-text(s, '검증 결과', 7.66, 2.37, 4.9, .45, 24, 'navy', True)
-metrics=[('186개', '백엔드 테스트'), ('13개', '클라이언트 테스트'), ('9개 + 9개', '실제 브라우저·API 흐름 / 기존 화면')]
-for i, (value, label) in enumerate(metrics):
-    y = 3.09 + .85*i
-    text(s, value, 7.67, y, 4.78, .49, 27, 'blue', True)
-    text(s, label, 7.68, y+.49, 4.85, .34, 18)
-button=rect(s, 7.67, 5.99, 4.91, .64, 'blue', radius=True)
-button.click_action.hyperlink.address = VIDEO
-text(s, '시연 영상 열기 · 1분 46초', 7.86, 6.13, 4.53, .37, 20, 'FFFFFF', True,
-     align=PP_ALIGN.CENTER, link=VIDEO)
-note(s, '영상: ' + VIDEO + '\n'
-     '포스터 원본 docs/demo/poster.png. 실제 영상 docs/demo/receivables-demo.mp4 길이 106.000초, H.264 1280×960, '
-     '브라우저 모바일 viewport·합성 자료·실제 API 연결·자막/무음·대기 구간 편집이다. '
-     '데모는 청구 100,000원에 40,000원 연결 후 미수 60,000원, 남은 60,000원 연결 후 0원, 두 번째 연결 취소 후 60,000원 복구. '
-     '합성 계정/거래처와 두 번째 입금은 미리 준비했다. poster 클릭과 파란 버튼에 GitHub branch MP4 링크를 넣었다. '
-     '검증 근거: docs/PORTFOLIO.md, docs/RECEIVABLES_MOBILE_MATCHING.md, docs/receivables-mobile-matching-review.md. '
-     '2026-11-01 실행 기록: backend 186개(실패/오류/skip 0), client 13개·typecheck·Expo web export 성공. '
-     '실제 브라우저/API 연결 흐름 9개 + 기존 core 화면 회귀 9개, page errors 0. 별도 독립 UI fixture 11개는 합성 경합 경계 검사이며 이 숫자에 합산하지 않는다. '
-     '이 장표를 만들면서 전체 테스트를 새로 실행한 것은 아니다. 다음 단계는 모바일 CSV 가져오기, iPhone/Android 실기기 확인, 앱인토스 적용 검토다. '
-     '네이티브 iOS/Android 실행·스토어 제출·공개 배포·앱인토스 SDK 실행은 미검증/후속 범위다.')
+# 5. Lessons grounded in the project and accurately attributed contribution.
+s=base('배운 점 | 업무 규칙과 검증 기준을 먼저 정한다','AI의 결과를 코드·데이터 흐름·재현 가능한 실행 근거로 확인하는 과정')
+lessons=[('업무 의미가 모델을 결정','합계 일치와 청구 지급은 다름\n후보·확정·취소를 구분'),('실패 상황까지 설계','재시도는 같은 요청 키\n동시 확정은 잠금·잔액 검사'),('검증도 범위를 구분','모의 응답과 실제 DB 구분\n브라우저와 실기기 구분')]
+for i,(title,body) in enumerate(lessons):
+    x=.75+4.16*i
+    rect(s,x,2.42,3.51,1.78,'light','line',True)
+    text(s,title,x+.17,2.64,3.17,.4,21,'blue',True)
+    text(s,body,x+.17,3.22,3.17,.73,18)
+text(s,'제가 맡은 일',.78,4.6,5.7,.43,23,'navy',True)
+text(s,'서비스 목표·업무 규칙 설정\n총괄·하위 역할 구성 요청\n우선순위와 완료 기준 결정',.8,5.2,5.6,1.22,20)
+text(s,'다음 확인',7.0,4.6,5.5,.43,23,'navy',True)
+text(s,'핵심 코드 설명·개발자 검토 기록\niPhone·Android 실기기 검증\n계정 보호·공개 운영·사용자 파일럿',7.02,5.2,5.4,1.22,20)
+note(s,'발표용 정리: 프로젝트에서 확인한 핵심은 합계 비교와 개별 지급 확인이 다르고, 멱등성과 동시성 제어도 서로 다른 문제라는 점입니다. '
+     '저는 목표·업무 규칙·역할 구성과 우선순위를 정했고, 코드 설계·구현·실행 검증에는 에이전트를 활용했습니다. '
+     '학습 문서 docs/PORTFOLIO_LEARNING.md의 질문을 직접 답한 뒤 본인이 이해한 내용으로 이 장의 발표를 조정합니다. 학습 완료나 직접 구현했다고 미리 기록하지 않습니다. '
+     '실제 모델 호출, 모바일 실기기, 공개 운영은 검증 완료가 아닙니다. 주요 업무·DB·아키텍처 변경은 앞으로 사용자 결정 후 진행합니다.')
 
 OUT.mkdir(parents=True, exist_ok=True)
-target = OUT / 'chagok-project.pptx'
-prs.save(target)
-print(target)
+prs.save(OUT / 'chagok-project.pptx')
+print(OUT / 'chagok-project.pptx')

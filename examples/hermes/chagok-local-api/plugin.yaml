@@ -1,0 +1,5 @@
+name: chagok-local-api
+version: 0.1.0
+description: 로컬 차곡 Java API의 현재 미수금 요약 조회
+provides_tools:
+  - chagok_receivables_summary

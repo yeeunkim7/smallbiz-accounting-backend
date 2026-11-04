@@ -137,6 +137,9 @@ class AllocationIntegrationTest {
         assertThat(confirm(owner, "same", List.of(lines.get(1), lines.get(0)), "memo")).isEqualTo(original);
         send(owner, "allocations", "same", request(List.of(line(p1, i1, "41"), lines.get(1)), "memo"), 409)
                 .andExpect(jsonPath("$.code").value("IDEMPOTENCY_CONFLICT"));
+        assertMoney(invoiceBalance(owner, i1, "2026-11-01"),
+                "allocatedAmount", "40", "outstandingAmount", "60");
+        assertMoney(paymentBalance(owner, p1), "unallocatedAmount", "60");
         var cancelled = cancel(owner, original, "same", " cancel reason "); // operation-scoped key
         assertThat(cancel(owner, original, "same", "cancel reason")).isEqualTo(cancelled);
         assertThat(confirm(owner, "same", lines, "memo")).isEqualTo(original);

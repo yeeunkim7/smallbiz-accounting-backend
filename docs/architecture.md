@@ -62,3 +62,20 @@ flowchart LR
 - 클라이언트: [`mobile`](../mobile), API 호출·초안·재전송 상태는 앱에 두되 최종 배분액/잔액 계산은 서버 응답을 사용
 
 기존 전역 데이터는 V1–V7 스키마에 남고 V8은 identity만 추가합니다. migration 및 정확한 테이블 필드는 [ERD](receivables-erd.md)를 참고하세요.
+
+## 로컬 Hermes 실습 경로
+
+```mermaid
+flowchart LR
+    Q[사용자 질문] --> H[Hermes Agent]
+    H -->|as_of만 입력| T[Python 조회 도구]
+    T -->|고정 localhost · 인증된 GET| J[Java 미수금 summary API]
+    J -->|현재 원장 조회| D[(PostgreSQL)]
+    J -->|금액 문자열 · 건수| T
+    T -->|허용된 필드 · API 근거| H
+    H --> A[조회 범위를 밝힌 설명]
+```
+
+2026-11-04 사용자 PC의 합성 계정으로 확인한 별도 학습 경로다. 제품 FREE 화면에서 호출하는 AI 기능은 아니다. 도구 소스는 [examples/hermes/chagok-local-api](../examples/hermes/chagok-local-api)에 있다. 모델이 URL·tenant·인증 정보를 입력하지 못하도록 제한하고, 프록시·리다이렉트·자동 재시도를 사용하지 않는다. 원본의 금액을 Python이나 모델이 다시 계산하지 않는다.
+
+`asOf`는 현재 원장의 연체 판정일이며 과거 잔액이나 특정일 거래 필터가 아니다. 결과에는 요약 API 근거가 있고 개별 원본 ID는 없다. 인증·접속 실패와 NO_DATA는 구분한다. 로컬 세션 자체는 쓰기 권한도 있으므로 GET 도구 제한을 서버의 읽기 전용 자격증명으로 설명하지 않는다. 제품 적용은 별도 권한 설계·검증이 필요하다.

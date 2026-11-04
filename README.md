@@ -1,6 +1,6 @@
 # 차곡 — 미수금·입금 확인
 
-청구와 입금을 연결하고, 아직 받지 못한 금액을 확인하는 서비스입니다.
+청구와 입금을 연결하고, 아직 받지 못한 금액을 확인하는 서비스입니다. **Codex의 총괄·하위 AI 에이전트를 활용해 개발했습니다.**
 
 ## 개발 배경
 
@@ -57,22 +57,24 @@ npm test
 npm run typecheck
 ```
 
-2026-11-01 기록: 백엔드 186개, 클라이언트 13개, 실제 브라우저·API 연결 9개와 기존 화면 회귀 9개 통과. 이번 문서 수정에서 재실행한 수치는 아닙니다. [실행 근거와 미검증 범위](docs/RECEIVABLES_MOBILE_MATCHING.md)
+2026-11-01 기록: 백엔드 186개, 클라이언트 13개, 실제 브라우저·API 연결 9개와 기존 화면 회귀 9개 통과. 2026-11-04 사용자 PC에서도 백엔드 186개 통과(실패·오류·스킵 0)를 확인했습니다. 클라이언트·브라우저 수치는 기존 실행 기록입니다. [실행 근거와 미검증 범위](docs/RECEIVABLES_MOBILE_MATCHING.md)
 
 ## 시연과 포트폴리오
 
 ![입금 연결과 미수금 확인 시연](docs/demo/poster.png)
 
-[시연 영상 · 1분 46초](docs/demo/receivables-demo.mp4) · [프로젝트 설명](docs/PORTFOLIO.md) · [발표 PPT](docs/portfolio/chagok-project.pptx) · [PDF](docs/portfolio/chagok-project.pdf)
+[시연 영상](docs/demo/receivables-demo.mp4) · [프로젝트 설명](docs/PORTFOLIO.md) · [발표 PPT](docs/portfolio/chagok-project.pptx) · [PDF](docs/portfolio/chagok-project.pdf)
 
 ## AI 에이전트 활용
 
 Codex를 활용해 개발했습니다. 개발자가 서비스 목표·업무 규칙·범위·완료 기준을 정하고, 총괄 에이전트가 기획·분석, 자료조사, 디자인, 개발, 독립 검토 작업을 배분했습니다. 코드 구현과 테스트 실행에는 AI를 활용했습니다. 세부 설계 중 개발자의 직접 선택이 확인되지 않는 사항은 구현 사실과 구분합니다.
 
-[활용 과정과 역할](docs/PORTFOLIO.md#ai-에이전트-활용-과정) · [개발자 결정 및 검토 절차](AGENTS.md) · [작업 이력](docs/AI_REVIEW_WORK.md)
+[활용 과정과 역할](docs/PORTFOLIO.md#에이전트를-어떻게-구성했나) · [개발자 결정 및 검토 절차](AGENTS.md) · [작업 이력](docs/AI_REVIEW_WORK.md)
+
+개발 후에는 개인 PC의 Hermes에 Python 조회 도구를 연결해 실제 Java API의 미수 요약을 설명하는 실습을 진행했습니다. 제품 FREE 기능과 분리된 합성 자료 실습입니다. [소스와 확인 범위](examples/hermes/chagok-local-api) · [직접 실행·학습 기록](docs/PORTFOLIO_LEARNING.md)
 
 ## 현재 범위와 남은 작업
 
-FREE 핵심 API와 Expo 화면의 등록→후보→확정→취소 흐름을 구현하고 브라우저에서 검증했습니다. FREE 업무는 AI를 호출하지 않습니다. 모바일 CSV 화면, iPhone·Android 실기기, 계정 복구·요청 제한·보존/삭제 정책과 공개 운영 검증이 남아 있습니다. 앱인토스 적용, 스토어 출시, 결제·구독과 PRO AI는 후속 범위입니다.
+FREE 핵심 API와 Expo 화면의 등록→후보→확정→취소 흐름을 구현하고 브라우저에서 검증했습니다. FREE 업무는 AI를 호출하지 않습니다. 모바일 CSV 화면, iPhone·Android 실기기, 계정 복구·요청 제한·보존/삭제 정책과 공개 운영 검증이 남아 있습니다. 앱인토스 적용, 스토어 출시, 결제·구독과 PRO AI는 후속 범위입니다. Docker 설치·배포는 현재 보류했습니다.
 
 [현재 개발 계획](docs/RECEIVABLES_FREE_MVP_PLAN.md) · [문서 분류와 검토 결과](docs/DOCUMENTATION_REVIEW.md)

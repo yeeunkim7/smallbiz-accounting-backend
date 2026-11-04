@@ -1,30 +1,162 @@
 {
+  "disclosure": "FREE 시연 · 합성 자료 · 실제 Java API에 연결한 Chromium 모바일 viewport 원본을 오프라인 재편집 · 음성 없음",
   "sourceCommit": "54fa68d12c6e4ab3557b9e9882001a4543c9dd0d",
-  "disclosure": "브라우저 모바일 화면 · 합성 자료 · 실제 API 연결 · 음성 없음(자막) · 대기 구간 편집",
-  "seedOutsideCamera": [
-    "합성 계정과 사업장",
-    "거래처",
-    "두 번째 60,000원 입금"
-  ],
+  "originalRecordingEvidence": {
+    "manifest": {
+      "sourceCommit": "54fa68d12c6e4ab3557b9e9882001a4543c9dd0d",
+      "disclosure": "브라우저 모바일 화면 · 합성 자료 · 실제 API 연결 · 음성 없음(자막) · 대기 구간 편집",
+      "seedOutsideCamera": [
+        "합성 계정과 사업장",
+        "거래처",
+        "두 번째 60,000원 입금"
+      ],
+      "checks": [
+        "serverOutstanding=100000",
+        "serverOutstanding=100000",
+        "oneRuleRunNoAutomaticAllocation",
+        "serverOutstanding=60000",
+        "serverOutstanding=60000",
+        "serverOutstanding=0",
+        "serverOutstanding=60000",
+        "cancellationAuditTwoEventsAndUsageStillOne",
+        "serverOutstanding=60000",
+        "syntheticTenantRemoved",
+        "completeVideoDecode",
+        "sixSampleFramesReviewed"
+      ],
+      "pageErrors": 0,
+      "media": {
+        "programs": [],
+        "stream_groups": [],
+        "streams": [
+          {
+            "codec_name": "h264",
+            "width": 1280,
+            "height": 960,
+            "pix_fmt": "yuv420p",
+            "avg_frame_rate": "25/1"
+          }
+        ],
+        "format": {
+          "duration": "106.000000",
+          "size": "1459145"
+        }
+      },
+      "chapters": [
+        {
+          "start": 0,
+          "duration": 11.0,
+          "title": "청구부터 기록합니다"
+        },
+        {
+          "start": 11.0,
+          "duration": 9.0,
+          "title": "현재 잔액은 서버에서"
+        },
+        {
+          "start": 20.0,
+          "duration": 11.0,
+          "title": "부분 입금을 기록합니다"
+        },
+        {
+          "start": 31.0,
+          "duration": 9.0,
+          "title": "입금과 청구는 별개로"
+        },
+        {
+          "start": 40.0,
+          "duration": 11.0,
+          "title": "규칙 후보를 생성합니다"
+        },
+        {
+          "start": 51.0,
+          "duration": 13.0,
+          "title": "40,000원을 직접 확정"
+        },
+        {
+          "start": 64.0,
+          "duration": 8.0,
+          "title": "남은 금액 60,000원"
+        },
+        {
+          "start": 72.0,
+          "duration": 13.0,
+          "title": "나머지 입금까지 연결"
+        },
+        {
+          "start": 85.0,
+          "duration": 12.0,
+          "title": "사유와 함께 연결 취소"
+        },
+        {
+          "start": 97.0,
+          "duration": 9.0,
+          "title": "되돌린 결과도 확인합니다"
+        }
+      ]
+    },
+    "note": "기존 녹화의 검증 기록이며 이번 편집에서 API·DB·모델·통합검증을 다시 실행하지 않았습니다."
+  },
+  "source": {
+    "file": "/workspace/.local/run/portfolio-video/source-before-cleanup.mp4",
+    "sha256": "42916ec11f2ca2115c36329eaa77383ea7210bc2c6a152cadce884e7ec5235b6",
+    "manifestFile": "/workspace/.local/run/portfolio-video/manifest-before-cleanup.json",
+    "manifestSha256": "f6db3d65b85df8b4d2a0660adaf1de47d115582850f9c3641741eae9d61f8536",
+    "originalDurationSeconds": 106,
+    "phoneRegion": {
+      "x": 800,
+      "y": 54,
+      "width": 390,
+      "height": 844
+    }
+  },
+  "edit": {
+    "script": "scripts/edit-portfolio-demo.py",
+    "method": "4-second title card; source phone crop only; unchanged speed; listed intervals omit end-of-scene waits. New backdrop captions are outside app viewport.",
+    "omittedSourceIntervals": [
+      [
+        10,
+        11
+      ],
+      [
+        18,
+        20
+      ],
+      [
+        30,
+        31
+      ],
+      [
+        37,
+        40
+      ],
+      [
+        50,
+        51
+      ],
+      [
+        70,
+        72
+      ],
+      [
+        96,
+        97
+      ],
+      [
+        104,
+        106
+      ]
+    ],
+    "hermesFootageIncluded": false,
+    "syntheticUiOrTerminalIncluded": false
+  },
   "checks": [
-    "serverOutstanding=100000",
-    "serverOutstanding=100000",
-    "oneRuleRunNoAutomaticAllocation",
-    "serverOutstanding=60000",
-    "serverOutstanding=60000",
-    "serverOutstanding=0",
-    "serverOutstanding=60000",
-    "cancellationAuditTwoEventsAndUsageStillOne",
-    "serverOutstanding=60000",
-    "syntheticTenantRemoved",
-    "completeVideoDecode",
-    "offlinePresentationReedit",
+    "ffprobeH2641280x960Yuv420p25fps",
+    "2425Frames97Seconds",
     "completeEditedVideoDecode",
-    "completeSourceFrameCountPreserved",
-    "tenChapterFramesReviewed",
-    "faststartVerified"
+    "faststartMoovBeforeMdat",
+    "elevenRepresentativeFramesVisuallyReviewed"
   ],
-  "pageErrors": 0,
   "media": {
     "programs": [],
     "stream_groups": [],
@@ -34,86 +166,149 @@
         "width": 1280,
         "height": 960,
         "pix_fmt": "yuv420p",
-        "avg_frame_rate": "25/1"
+        "avg_frame_rate": "25/1",
+        "nb_read_frames": "2425"
       }
     ],
     "format": {
-      "duration": "106.000000",
-      "size": "1333700"
+      "duration": "97.000000",
+      "size": "1333396"
     }
   },
   "chapters": [
     {
       "start": 0,
-      "duration": 11.0,
-      "title": "청구 등록",
-      "result": "거래처와 청구 금액 100,000원을 입력합니다."
+      "duration": 4,
+      "title": "차곡",
+      "caption": "청구와 입금을 연결하고 남은 금액을 확인합니다.",
+      "source": null
     },
     {
-      "start": 11.0,
-      "duration": 9.0,
-      "title": "청구 상세",
-      "result": "청구 100,000원과 남은 금액을 확인합니다."
+      "start": 4,
+      "duration": 10,
+      "title": "청구를 등록합니다",
+      "caption": "거래처와 금액을 입력합니다. 이번 청구는 100,000원입니다.",
+      "source": {
+        "start": 0,
+        "endExclusive": 10,
+        "speed": 1
+      }
     },
     {
-      "start": 20.0,
-      "duration": 11.0,
-      "title": "입금 등록",
-      "result": "입금 40,000원을 등록합니다."
+      "start": 14,
+      "duration": 7,
+      "title": "받을 금액 100,000원",
+      "caption": "청구 상세에서 금액과 기한을 확인합니다.",
+      "source": {
+        "start": 11,
+        "endExclusive": 18,
+        "speed": 1
+      }
     },
     {
-      "start": 31.0,
-      "duration": 9.0,
-      "title": "입금 내역",
-      "result": "입금 40,000원과 60,000원을 확인합니다."
+      "start": 21,
+      "duration": 10,
+      "title": "입금을 기록합니다",
+      "caption": "먼저 들어온 40,000원을 입금 내역에 등록합니다.",
+      "source": {
+        "start": 20,
+        "endExclusive": 30,
+        "speed": 1
+      }
     },
     {
-      "start": 40.0,
-      "duration": 11.0,
-      "title": "연결 후보",
-      "result": "입금과 청구의 연결 후보를 확인합니다."
+      "start": 31,
+      "duration": 6,
+      "title": "입금은 연결 전입니다",
+      "caption": "입금 합계는 100,000원. 청구에 연결해야 잔액에 반영됩니다.",
+      "source": {
+        "start": 31,
+        "endExclusive": 37,
+        "speed": 1
+      }
     },
     {
-      "start": 51.0,
-      "duration": 13.0,
-      "title": "부분 입금 연결",
-      "result": "40,000원을 검토하고 연결합니다."
+      "start": 37,
+      "duration": 10,
+      "title": "연결할 후보를 살펴봅니다",
+      "caption": "후보는 아직 확정이 아닙니다. 동일 금액·이름만으로는 어느 청구의 입금인지 단정할 수 없어요.",
+      "source": {
+        "start": 40,
+        "endExclusive": 50,
+        "speed": 1
+      }
     },
     {
-      "start": 64.0,
-      "duration": 8.0,
-      "title": "남은 금액 확인",
-      "result": "40,000원 연결 후 미수 60,000원."
+      "start": 47,
+      "duration": 13,
+      "title": "확인은 사용자가 합니다",
+      "caption": "입금과 청구, 현재 잔액을 보고 40,000원 연결을 확정합니다.",
+      "source": {
+        "start": 51,
+        "endExclusive": 64,
+        "speed": 1
+      }
     },
     {
-      "start": 72.0,
-      "duration": 13.0,
-      "title": "입금 연결 완료",
-      "result": "나머지 60,000원 연결 후 미수 0원."
+      "start": 60,
+      "duration": 6,
+      "title": "이제 60,000원이 남았습니다",
+      "caption": "확정한 40,000원이 미수 잔액에 반영됐습니다.",
+      "source": {
+        "start": 64,
+        "endExclusive": 70,
+        "speed": 1
+      }
     },
     {
-      "start": 85.0,
-      "duration": 12.0,
-      "title": "연결 취소",
-      "result": "60,000원 연결을 사유와 함께 취소합니다."
+      "start": 66,
+      "duration": 13,
+      "title": "나머지 입금도 연결합니다",
+      "caption": "60,000원을 추가로 확정하면 남은 금액은 0원이 됩니다.",
+      "source": {
+        "start": 72,
+        "endExclusive": 85,
+        "speed": 1
+      }
     },
     {
-      "start": 97.0,
-      "duration": 9.0,
-      "title": "취소 후 잔액",
-      "result": "미수 잔액이 60,000원으로 복원됩니다."
+      "start": 79,
+      "duration": 11,
+      "title": "잘못 연결했다면 취소합니다",
+      "caption": "사유를 남기고 60,000원 연결을 취소합니다.",
+      "source": {
+        "start": 85,
+        "endExclusive": 96,
+        "speed": 1
+      }
+    },
+    {
+      "start": 90,
+      "duration": 7,
+      "title": "잔액을 다시 확인합니다",
+      "caption": "취소한 금액이 돌아와 미수 잔액은 다시 60,000원입니다.",
+      "source": {
+        "start": 97,
+        "endExclusive": 104,
+        "speed": 1
+      }
     }
   ],
-  "presentationEdit": {
-    "sourceSha256": "42916ec11f2ca2115c36329eaa77383ea7210bc2c6a152cadce884e7ec5235b6",
-    "phoneRegion": {
-      "x": 800,
-      "y": 54,
-      "width": 390,
-      "height": 844
-    },
-    "timeline": "Preserved all source frames at 25 fps; replaced presentation backdrop only.",
-    "command": "python scripts/record-portfolio-demo.py --reedit SOURCE.mp4 --manifest SOURCE_MANIFEST.json",
-    "phoneRegionSsim": 0.998848
+  "visualReview": {
+    "sampleSeconds": [
+      2,
+      9,
+      19,
+      27,
+      34,
+      43,
+      56,
+      63,
+      75,
+      87,
+      94
+    ],
+    "method": "ffmpeg frame extraction and contact sheet inspected with view_image",
+    "result": "Introduction and all ten chapters reviewed; app viewport visible, captions outside viewport, no text collision."
   }
 }

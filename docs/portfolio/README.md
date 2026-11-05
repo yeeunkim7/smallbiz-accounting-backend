@@ -19,11 +19,4 @@ Codex의 선택 이유는 기존 연결 환경, 총괄·하위 역할 활용, �
 
 7장의 영상 링크는 `../demo/receivables-demo.mp4`입니다. portfolio와 demo 폴더를 함께 내려받거나 영상 파일을 직접 열어 주세요. 기존 포트폴리오에 넣을 때는 원본 서식 유지를 선택하세요.
 
-## 다시 만들기
-
-```sh
-python scripts/build-portfolio-slides.py
-soffice --headless --convert-to pdf --outdir docs/portfolio docs/portfolio/chagok-project.pptx
-```
-
-Python의 python-pptx·Pillow, Noto Sans CJK KR 글꼴과 LibreOffice가 필요합니다. 개인 PC 실행·학습 범위는 [학습 기록](../PORTFOLIO_LEARNING.md)을 참고하세요. [이전 소개서2쪽](overview.pdf)은 이번 변경을 반영하지 않은 과거 요약입니다.
+발표 자료 생성 스크립트는 저장소에서 제외했습니다. 개인 PC 실행·학습 범위는 [학습 기록](../PORTFOLIO_LEARNING.md)을 참고하세요. [이전 소개서 2쪽](overview.pdf)은 과거 요약입니다.

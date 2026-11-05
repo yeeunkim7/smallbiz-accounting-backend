@@ -10,14 +10,4 @@
 
 앱 화면은 브라우저 녹화 원본이며 문구나 금액을 덧씌우지 않습니다. 왼쪽 설명은 앱 영역 밖에만 배치합니다. 음성은 없으며, 같은 설명을 제공하는 `captions.srt`는 필요할 때만 선택합니다. 검증 결과와 장별 시간은 [manifest.json](manifest.json)에 있습니다.
 
-## 다시 녹화하기
-
-API는 8091, Expo는 8081 포트를 사용합니다. API 실행 시 `--app.cors.allowed-origins=http://127.0.0.1:8081`로 출처를 정확히 허용하고, Expo의 `EXPO_PUBLIC_API_URL`을 `http://127.0.0.1:8091`로 지정합니다. 테스트 DB 연결 정보는 환경 변수로만 전달합니다.
-
-```sh
-python scripts/record-portfolio-demo.py --output docs/demo --raw-dir /workspace/.local/run/portfolio-video-nov05
-```
-
-Python Playwright, Chromium, Pillow, FFmpeg·ffprobe, Noto Sans CJK가 필요합니다. 스크립트는 로컬 테스트 DB를 확인하고 자신이 만든 계정과 사업장만 정리합니다. 로그인 장면을 포함한 원본은 저장소 밖에 보관합니다. 기존 영상과 manifest는 같은 외부 폴더의 `before.mp4`, `before-manifest.json`에 보존했습니다.
-
-PPT용 화면은 `docs/screenshots/portfolio-nov05-*.png`에 브라우저에서 직접 캡처합니다. 앱 영역을 다시 그리거나 화면 숫자를 바꾸지 않습니다.
+녹화·편집 스크립트는 저장소에서 제외했습니다. 기존 영상과 검증 기록은 유지합니다.

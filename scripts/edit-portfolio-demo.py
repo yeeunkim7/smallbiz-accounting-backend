@@ -7,10 +7,10 @@ import subprocess
 from PIL import Image, ImageDraw, ImageFont
 
 ROOT = Path(__file__).resolve().parents[1]
-RAW = Path('/workspace/.local/run/portfolio-video')
+RAW = Path('/workspace/.local/run/portfolio-video-nov05')
 OUT = ROOT / 'docs/demo'
-SOURCE = RAW / 'source-before-cleanup.mp4'
-SOURCE_MANIFEST = RAW / 'manifest-before-cleanup.json'
+SOURCE = RAW / 'source-for-edit.mp4'
+SOURCE_MANIFEST = RAW / 'source-for-edit.json'
 WORK = RAW / 'refresh'
 WORK.mkdir(exist_ok=True)
 
@@ -35,7 +35,7 @@ EDITS = [
     (64, 6, '이제 60,000원이 남았습니다', ['확정한 40,000원이', '미수 잔액에 반영됐습니다.']),
     (72, 13, '나머지 입금도 연결합니다', ['60,000원을 추가로 확정하면', '남은 금액은 0원이 됩니다.']),
     (85, 11, '잘못 연결했다면 취소합니다', ['사유를 남기고', '60,000원 연결을 취소합니다.']),
-    (97, 7, '잔액을 다시 확인합니다', ['취소한 금액이 돌아와', '미수 잔액은 다시 60,000원입니다.']),
+    (97, 7, '잔액을 다시 확인합니다', ['연결을 취소해', '미수 잔액은 다시 60,000원입니다.']),
 ]
 
 def backdrop(title, lines, number=None):
@@ -47,7 +47,6 @@ def backdrop(title, lines, number=None):
         d.text((72, 335), title, font=font(64, True), fill='#153E34')
         for j, line in enumerate(lines):
             d.text((76, 450+j*51), line, font=font(32), fill='#425B52')
-        d.text((76, 805), '합성 자료 · 브라우저 모바일 화면 · 실제 Java API 연결', font=font(20), fill='#64726B')
     else:
         d.text((72, 310), f'{number:02d} / 10', font=font(18), fill='#64726B')
         d.text((72, 360), title, font=font(32, True), fill='#153E34')
@@ -93,7 +92,7 @@ assert content.index(b'moov') < content.index(b'mdat')
 run(['ffmpeg','-v','error','-i',str(final),'-f','null','-'])
 original = json.loads(SOURCE_MANIFEST.read_text())
 manifest = {
-    'disclosure':'FREE 시연 · 합성 자료 · 실제 Java API에 연결한 Chromium 모바일 viewport 원본을 오프라인 재편집 · 음성 없음',
+    'disclosure':'FREE 시연 · 시연용 데이터 · 실제 Java API에 연결한 Chromium 모바일 viewport 원본을 오프라인 재편집 · 음성 없음',
     'sourceCommit':original['sourceCommit'],
     'originalRecordingEvidence':{'manifest':original,'note':'기존 녹화의 검증 기록이며 이번 편집에서 API·DB·모델·통합검증을 다시 실행하지 않았습니다.'},
     'source':{'file':str(SOURCE),'sha256':hashlib.sha256(SOURCE.read_bytes()).hexdigest(),'manifestFile':str(SOURCE_MANIFEST),'manifestSha256':hashlib.sha256(SOURCE_MANIFEST.read_bytes()).hexdigest(),'originalDurationSeconds':106,'phoneRegion':{'x':800,'y':54,'width':390,'height':844}},

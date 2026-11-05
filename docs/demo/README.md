@@ -1,47 +1,23 @@
 # 차곡 시연 영상
 
-[영상 보기 · 1분 37초](receivables-demo.mp4) · [선택 자막](captions.srt)
+[영상 보기 · 1분 46초](receivables-demo.mp4) · [선택 자막](captions.srt)
 
 [![차곡 시연 영상](poster.png)](receivables-demo.mp4)
 
-청구 100,000원을 등록하고 두 입금 40,000원·60,000원을 연결합니다. 후보를 확인한 사용자가 확정한 뒤 잔액이 줄고, 연결을 취소하면 해당 금액이 돌아오는 흐름입니다.
+차곡 공방의 A 거래처에 11월 청구 100,000원을 등록하고, 입금 40,000원과 60,000원을 연결합니다. 후보를 검토한 사용자가 확정하면 미수가 줄고, 사유를 남겨 연결을 취소하면 잔액이 복원됩니다.
 
-| 시간 | 내용 |
-| --- | --- |
-| 00:00 | 소개 |
-| 00:04 | 청구 등록 |
-| 00:14 | 청구 상세 |
-| 00:21 | 입금 등록 |
-| 00:31 | 연결 전 잔액 |
-| 00:37 | 연결 후보 확인 |
-| 00:47 | 사용자 검토·40,000원 연결 확정 |
-| 01:00 | 미수 60,000원 |
-| 01:06 | 나머지 60,000원 연결 |
-| 01:19 | 연결 취소 |
-| 01:30 | 미수 60,000원 복원 |
+시연용 데이터·실제 API·브라우저: 격리된 로컬 `reconciliation_test`에서 Java API와 Expo 웹을 Chromium 모바일 viewport로 새로 녹화했습니다. 계정·거래처·두 번째 60,000원 입금은 화면 밖에서 준비합니다. 실제 휴대폰과 Hermes 실습은 포함하지 않습니다.
 
-FREE 기능을 Chromium의 모바일 viewport에서 실제 Java API에 연결해 녹화한 기존 원본을 재편집했습니다. 자료는 합성이며, 계정·거래처·두 번째 60,000원 입금은 화면 밖에서 미리 준비했습니다. 실제 휴대폰이나 Hermes 실습 녹화는 포함하지 않습니다. 사용자 PC의 별도 Hermes 실습을 보여주는 영상이 아닙니다.
+앱 화면은 브라우저 녹화 원본이며 문구나 금액을 덧씌우지 않습니다. 왼쪽 설명은 앱 영역 밖에만 배치합니다. 음성은 없으며, 같은 설명을 제공하는 `captions.srt`는 필요할 때만 선택합니다. 검증 결과와 장별 시간은 [manifest.json](manifest.json)에 있습니다.
 
-화면 왼쪽에 상황 문구가 이미 표시됩니다. **일반 재생에서는 SRT 자막을 끄세요.** `captions.srt`는 별도로 자막이 필요한 경우만 선택하는 동일 문구의 대체 자료입니다. 음성·배경음악은 없습니다.
+## 다시 녹화하기
 
-이번 작업은 기존 106초 영상의 앱 화면만 잘라 사용하고 장면 끝 대기 일부를 덜어낸 오프라인 편집입니다. 앱 화면을 새로 만들거나 터미널을 연출하지 않았습니다. 원본의 API 검증 기록과 이번 미디어 검증은 [manifest.json](manifest.json)에 구분했으며, 새 통합 검증을 수행한 것으로 날짜를 변경하지 않았습니다. 화면의 표시 시각은 기존 녹화 당시 시각입니다.
-
-## 다시 편집하기
-
-원본은 개인정보가 섞일 수 있어 저장소 밖 `/workspace/.local/run/portfolio-video`에 보관합니다. 원본과 당시 manifest가 있어야 합니다.
+API는 8091, Expo는 8081 포트를 사용합니다. API 실행 시 `--app.cors.allowed-origins=http://127.0.0.1:8081`로 출처를 정확히 허용하고, Expo의 `EXPO_PUBLIC_API_URL`을 `http://127.0.0.1:8091`로 지정합니다. 테스트 DB 연결 정보는 환경 변수로만 전달합니다.
 
 ```sh
-python scripts/edit-portfolio-demo.py
+python scripts/record-portfolio-demo.py --output docs/demo --raw-dir /workspace/.local/run/portfolio-video-nov05
 ```
 
-필요 도구: Python, Pillow, FFmpeg·ffprobe, Noto Sans CJK. API·DB·네트워크 연결은 사용하지 않습니다. 원본 파일 해시, 사용·제외 구간과 1배속 여부는 manifest에 기록합니다.
+Python Playwright, Chromium, Pillow, FFmpeg·ffprobe, Noto Sans CJK가 필요합니다. 스크립트는 로컬 테스트 DB를 확인하고 자신이 만든 계정과 사업장만 정리합니다. 로그인 장면을 포함한 원본은 저장소 밖에 보관합니다. 기존 영상과 manifest는 같은 외부 폴더의 `before.mp4`, `before-manifest.json`에 보존했습니다.
 
-## 새로 녹화하기
-
-별도 실행이 필요한 작업입니다. 로컬 테스트 DB의 API를 8091, Expo를 8081 포트에서 실행하고 테스트 DB 연결 정보를 환경 변수로 설정합니다.
-
-```sh
-python scripts/record-portfolio-demo.py --output docs/demo
-```
-
-새 녹화에는 Python Playwright, Chromium과 격리된 `reconciliation_test` DB도 필요합니다.
+PPT용 화면은 `docs/screenshots/portfolio-nov05-*.png`에 브라우저에서 직접 캡처합니다. 앱 영역을 다시 그리거나 화면 숫자를 바꾸지 않습니다.

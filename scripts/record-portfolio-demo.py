@@ -26,7 +26,7 @@ parser.add_argument('--manifest', type=Path, help='Manifest for --reedit (defaul
 parser.add_argument('--api', default='http://127.0.0.1:8091')
 parser.add_argument('--web', default='http://127.0.0.1:8081')
 parser.add_argument('--output', type=Path, default=ROOT / 'docs/demo')
-parser.add_argument('--raw-dir', type=Path, default=Path('/workspace/.local/run/portfolio-video'))
+parser.add_argument('--raw-dir', type=Path, default=Path('/workspace/.local/run/portfolio-video-nov05'))
 args = parser.parse_args()
 API, WEB = args.api.rstrip('/'), args.web.rstrip('/')
 for value in (API, WEB):
@@ -78,14 +78,14 @@ def cleanup():
 async def record():
     from playwright.async_api import async_playwright, expect
     global owner, tenant, token
-    login, password = 'portfolio-' + uuid.uuid4().hex, 'Synthetic-' + uuid.uuid4().hex
-    session = api('/auth/signup', {'login': login, 'password': password, 'tenantName': '가상공방 · 포트폴리오'})
+    login, password = 'demo-a-' + uuid.uuid4().hex[:8], 'Synthetic-' + uuid.uuid4().hex
+    session = api('/auth/signup', {'login': login, 'password': password, 'tenantName': '차곡 공방'})
     owner, token = session['accountId'], session['accessToken']
     tenant = api('/auth/me')['tenants'][0]['id']
     prefix = '/tenants/' + tenant
     def create(resource, body):
         return api(prefix + '/' + resource, body, uuid.uuid4().hex)
-    create('counterparties', {'code': 'SYNTHETIC', 'name': '합성 거래처'})
+    create('counterparties', {'code': 'SYNTHETIC', 'name': 'A 거래처'})
     def balance(expected):
         value = api(prefix + '/receivables/summary?asOf=2026-11-30')
         assert value['outstandingAmount'] == expected, 'Unexpected server balance'
@@ -137,18 +137,28 @@ async def record():
             end = time.monotonic() - started
             scenes.append({'title': title, 'subtitle': subtitle, 'lines': lines, 'start': start, 'duration': end - start})
             print('Recorded chapter ' + str(len(scenes)), flush=True)
+        async def screenshot(name):
+            await page.evaluate('document.activeElement?.blur()')
+            path = ROOT / 'docs/screenshots' / ('portfolio-nov05-' + name + '.png')
+            path.parent.mkdir(parents=True, exist_ok=True)
+            await page.screenshot(path=str(path))
+        await screenshot('home')
+        await click('계정', 'tab')
+        await screenshot('account')
+        await click('홈', 'tab')
         async def invoice_form():
             await click('청구 추가')
-            await page.get_by_role('radio', name=re.compile('합성 거래처')).click()
-            await field('청구 이름·번호', '11월 합성 청구')
+            await page.get_by_role('radio', name=re.compile('A 거래처')).click()
+            await field('청구 이름·번호', '11월 청구')
             await field('금액 (원)', '100000')
             await field('청구일', '2026-11-01')
             await field('입금 기한', '2026-11-30')
+            await screenshot('registration')
         await scene('청구 등록', '01', ['거래처와 청구 금액 100,000원을 입력합니다.'], 11, invoice_form)
         async def save_invoice():
             await click('청구 등록하기')
             await expect(page.get_by_text('청구를 등록했어요.', exact=False)).to_be_visible()
-            await page.get_by_role('button', name=re.compile('합성 거래처, 11월 합성 청구')).click()
+            await page.get_by_role('button', name=re.compile('A 거래처, 11월 청구')).click()
             await expect(page.get_by_text('현재 남은 금액', exact=True)).to_be_visible()
             balance('100000')
         await scene('청구 상세', '02', ['청구 100,000원과 남은 금액을 확인합니다.'], 9, save_invoice)
@@ -157,11 +167,11 @@ async def record():
             await click('입금 추가')
             await field('금액 (원)', '40000')
             await field('입금일', '2026-11-01')
-            await field('입금자 이름 (선택)', '합성 거래처')
+            await field('입금자 이름 (선택)', 'A 거래처')
             await click('입금 등록하기')
             await expect(page.get_by_text('입금을 등록했어요.', exact=False)).to_be_visible()
         await scene('입금 등록', '03', ['입금 40,000원을 등록합니다.'], 11, payment_form)
-        create('payments', {'amount': '60000', 'bookedDate': '2026-11-02', 'payerName': '합성 거래처'})
+        create('payments', {'amount': '60000', 'bookedDate': '2026-11-02', 'payerName': 'A 거래처'})
         async def unallocated_home():
             await click('홈', 'tab')
             # Tab switch refreshes the server summary after the UI registration.
@@ -178,9 +188,10 @@ async def record():
             assert api(prefix + '/matching-usage')['completed'] == 1
             assert len(api(prefix + '/allocations')['items']) == 0
             checks.append('oneRuleRunNoAutomaticAllocation')
+            await screenshot('candidates')
         await scene('연결 후보', '05', ['입금과 청구의 연결 후보를 확인합니다.'], 11, candidates)
         async def add(amount):
-            loc = page.get_by_role('button', name=re.compile(re.escape(amount + ' → 11월 합성 청구 초안에 담기') + '$'))
+            loc = page.get_by_role('button', name=re.compile(re.escape(amount + ' → 11월 청구 초안에 담기') + '$'))
             await loc.scroll_into_view_if_needed()
             await page.wait_for_timeout(500)
             await loc.click()
@@ -202,6 +213,7 @@ async def record():
             await click('홈', 'tab')
             await expect(page.get_by_text('60,000원', exact=True).first).to_be_visible()
             balance('60000')
+            await screenshot('confirmed-outstanding')
         await scene('남은 금액 확인', '07', ['40,000원 연결 후 미수 60,000원.'], 8, partial_home)
         await click('입금 연결', 'tab')
         async def second_confirm():
@@ -214,7 +226,7 @@ async def record():
         await click('입금 연결', 'tab')
         await page.get_by_label('연결 취소 사유 (필수)', exact=True).scroll_into_view_if_needed()
         async def cancel_second():
-            await field('연결 취소 사유 (필수)', '합성 시연: 두 번째 연결 재검토')
+            await field('연결 취소 사유 (필수)', '연결 내역 재확인')
             await click('전체 연결 취소 검토')
             await page.wait_for_timeout(1200)
             await click('연결 취소 확정')
@@ -227,6 +239,7 @@ async def record():
             assert len(cancelled) == 1 and len(cancelled[0]['audit']) == 2
             assert api(prefix + '/matching-usage')['completed'] == 1
             checks.append('cancellationAuditTwoEventsAndUsageStillOne')
+            await screenshot('cancellation-audit')
         await scene('연결 취소', '09', ['60,000원 연결을 사유와 함께 취소합니다.'], 12, cancel_second)
         async def restored():
             await click('홈', 'tab')
@@ -320,7 +333,7 @@ def compose(raw_path):
     run(['ffmpeg', '-v', 'error', '-i', str(final), '-f', 'null', '-'])
     checks.append('completeVideoDecode')
     assert final.stat().st_size < 50 * 1024 * 1024
-    manifest = {'sourceCommit': run(['git', '-C', str(ROOT), 'rev-parse', 'HEAD']).strip(), 'disclosure': '브라우저 모바일 화면 · 합성 자료 · 실제 API 연결 · 음성 없음(자막) · 대기 구간 편집', 'seedOutsideCamera': ['합성 계정과 사업장', '거래처', '두 번째 60,000원 입금'], 'checks': checks, 'pageErrors': len(errors), 'media': info, 'chapters': [{'start': s['outputStart'], 'duration': round(s['duration'], 3), 'title': s['title']} for s in scenes]}
+    manifest = {'sourceCommit': run(['git', '-C', str(ROOT), 'rev-parse', 'HEAD']).strip(), 'disclosure': '시연용 데이터 · 실제 Java API · Chromium 모바일 viewport · 음성 없음(자막)', 'seedOutsideCamera': ['시연용 계정과 사업장', '거래처', '두 번째 60,000원 입금'], 'checks': checks, 'pageErrors': len(errors), 'media': info, 'chapters': [{'start': s['outputStart'], 'duration': round(s['duration'], 3), 'title': s['title']} for s in scenes]}
     (OUT / 'manifest.json').write_text(json.dumps(manifest, ensure_ascii=False, indent=2) + '\n')
     print(json.dumps({'status': 'complete', 'duration': info['format']['duration'], 'bytes': final.stat().st_size, 'chapters': len(scenes), 'checks': checks}, ensure_ascii=False))
 

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Build the editable five-slide Korean project insert from repository evidence.
+"""Build the editable Korean project presentation from repository evidence.
 
 Requires python-pptx and Pillow. Export PDF with LibreOffice after building.
 The source portfolio is used only as a visual reference and is never imported.
@@ -21,8 +21,8 @@ REPO = 'https://github.com/yeeunkim7/smallbiz-accounting-backend'
 BASE = REPO + '/blob/main/'
 VIDEO = '../demo/receivables-demo.mp4'
 FONT = 'Noto Sans CJK KR'
-C = dict(bg='FFFFFF', navy='23334D', text='34435A', muted='65738A', blue='3A59D1',
-         pale='F1F4FD', line='DDE4F0', light='F7F9FC', green='087C70')
+C = dict(bg='FAFAFA', navy='23334D', text='34435A', muted='65738A', blue='308CC0',
+         pale='EEF5FA', line='DDE4F0', light='F7F9FC', green='087C70')
 
 prs = Presentation()
 prs.slide_width, prs.slide_height = Inches(13.333333), Inches(7.5)
@@ -43,6 +43,8 @@ def rect(s, x, y, w, h, fill='light', line=None, radius=False):
                             Inches(x), Inches(y), Inches(w), Inches(h))
     sh.fill.solid(); sh.fill.fore_color.rgb = rgb(fill)
     sh._element.spPr.append(OxmlElement('a:effectLst'))
+    for effect in sh._element.xpath('.//a:effectRef'):
+        effect.set('idx', '0')
     if line:
         sh.line.color.rgb = rgb(line); sh.line.width = Pt(1)
     else:
@@ -75,6 +77,8 @@ def text(s, content, x, y, w, h, size=20, color='text', bold=False,
 def line(s, x1, y1, x2, y2, color='line', width=1.5):
     sh = s.shapes.add_connector(MSO_CONNECTOR.STRAIGHT, Inches(x1), Inches(y1), Inches(x2), Inches(y2))
     sh.line.color.rgb = rgb(color); sh.line.width = Pt(width)
+    for effect in sh._element.xpath('.//a:effectRef'):
+        effect.set('idx', '0')
     return sh
 
 
@@ -85,13 +89,16 @@ def arrow(s, x, y, w=.4, h=.25):
 def rect_arrow(s, x, y, w, h):
     sh = s.shapes.add_shape(MSO_SHAPE.RIGHT_ARROW, Inches(x), Inches(y), Inches(w), Inches(h))
     sh.fill.solid(); sh.fill.fore_color.rgb = rgb('blue'); sh.line.fill.background()
+    for effect in sh._element.xpath('.//a:effectRef'):
+        effect.set('idx', '0')
     return sh
 
 
 def base(title, sub=None, ai=False):
     s = prs.slides.add_slide(prs.slide_layouts[6])
     s.background.fill.solid(); s.background.fill.fore_color.rgb = rgb('bg')
-    text(s, '차곡  /  개발 기록', .7, .35, 8, .34, 15, 'blue', True)
+    line(s,.7,.51,1.65,.51,'blue',2)
+    text(s, 'PROJECT 02  /  차곡', 1.83, .35, 8, .34, 15, 'blue', True)
     text(s, f'{len(prs.slides):02d}', 11.9, .35, .7, .34, 15, 'muted', align=PP_ALIGN.RIGHT)
     text(s, title, .7, .97, 12, .68, 30, 'navy', True)
     if sub:
@@ -116,120 +123,193 @@ def image(s, path, x, y, w=None, h=None, crop=None, link=None):
     return shape
 
 
-# 1. The user problem and the resulting product.
-s = base('청구와 입금을 연결하고, 남은 금액을 확인합니다',
-         '차곡 · 소규모 사업자를 위한 미수금·입금 확인 서비스')
-text(s, '합계가 맞아도\n어떤 청구가 지급됐는지는 모릅니다.', .75, 2.58, 8.1, 1.13, 27, 'navy', True)
-text(s, '부분 입금과 여러 청구를 합친 입금을 연결하고,\n확정·취소 이력과 청구별 미수금을 남겼습니다.', .78, 3.98, 7.9, .9, 20)
-rect(s, .75, 5.27, 7.96, 1.05, 'pale', radius=True)
-for x,label,value in [(1.0,'청구','100,000원'),(3.55,'확정 배분','40,000원'),(6.1,'남은 금액','60,000원')]:
-    text(s,label,x,5.44,2.2,.3,15,'muted')
-    text(s,value,x,5.85,2.3,.38,22,'blue',True)
-text(s, 'Codex의 총괄·하위 AI 에이전트를 활용해 개발했습니다.', .78, 6.67, 8.1, .36, 17, 'muted')
-rect(s, 9.15, 2.35, 3.43, 4.75, 'light', 'line', True)
-image(s, 'docs/demo/poster.png', 9.25, 2.45, w=3.23, h=4.42, crop=(721,160,1111,694), link=VIDEO)
-note(s, '발표: 차곡은 기존 입출금 대사 시스템에서 출발한 미수금 확인 서비스입니다. 하루의 합계가 같아도 개별 청구가 지급됐는지는 알 수 없습니다. '
-     '저는 소규모 사업자의 부분 입금과 묶음 입금을 확인하는 방향으로 목표를 정했습니다. 기존 Java 시스템을 보존하고 청구, 입금, 배분 이력을 추가하도록 했습니다. '
-     '예를 들어 청구 10만 원에 입금 4만 원을 등록하는 것만으로 미수가 줄지는 않습니다. 사람이 연결을 확정하면 미수 6만 원이 됩니다. '
-     '근거: docs/PORTFOLIO.md, docs/RECEIVABLES_ALLOCATION.md. 화면은 합성 자료와 실제 Java API를 사용한 Chromium 모바일 viewport입니다. 실기기 캡처가 아닙니다. '
-     '화면 클릭은 같은 배포 묶음의 ../demo/receivables-demo.mp4를 엽니다. 제품 FREE는 AI를 호출하지 않습니다.')
 
-# 2. Why Codex and how responsibility was assigned.
-s = base('Codex에서 역할을 나누고, 검토 결과를 다시 구현에 반영했습니다',
-         '제가 목표·업무 규칙·완료 기준을 정하고, 총괄 에이전트에 작업 조율을 맡겼습니다.')
-text(s, 'Codex를 선택한 이유', .77, 2.57, 3.6, .4, 22, 'blue', True)
-for i,(title,body) in enumerate([
-    ('기존 프로젝트에서 시작','코드·DB·테스트를 함께 확인'),
-    ('수정과 실행을 연결','파일 수정 후 테스트·Git 기록'),
-    ('역할별 결과를 통합','같은 저장소에서 검토·수정 반복')]):
-    y=3.24+i*1.08
-    text(s,title,.79,y,3.6,.35,19,'navy',True)
-    text(s,body,.79,y+.45,3.6,.4,16,'muted')
-rect(s,5.0,2.55,7.5,.7,'blue',radius=True)
-text(s,'총괄 · 작업 배분 / 선행 결과 연결 / 통합',5.15,2.73,7.2,.35,20,'FFFFFF',True,align=PP_ALIGN.CENTER)
-roles=[('기획·분석','기존 업무와 DB\n재사용 범위'),('자료조사','사용자 문제\n기능 우선순위'),('디자인','화면 흐름\n상태와 근거'),('개발','기능별 구현\nAPI와 화면'),('독립 검토','결함 재현\n수정 후 재검증')]
+def small_label(s, label, x, y, w=5):
+    return text(s, label, x, y, w, .32, 15, 'blue', True)
+
+
+def block(s, title, body, x, y, w, h, fill='light'):
+    rect(s,x,y,w,h,fill,radius=True)
+    text(s,title,x+.2,y+.17,w-.4,.42,21,'navy',True)
+    text(s,body,x+.2,y+.77,w-.4,h-.85,17)
+
+
+def notes(s, spoken, evidence):
+    note(s, '발표\n'+spoken+'\n\n근거와 범위\n'+evidence)
+
+
+def photo(s, name, x, y, w, h):
+    im=Image.open(ROOT / ('docs/screenshots/portfolio-nov05-'+name+'.png'))
+    scale=min(w/im.width,h/im.height)
+    image(s,'docs/screenshots/portfolio-nov05-'+name+'.png',x+(w-im.width*scale)/2,y,w=im.width*scale,h=im.height*scale)
+
+
+def feature(s, number, title, shot, bullets, x):
+    rect(s,x,2.43,5.76,4.66,'FFFFFF','line')
+    text(s,number+'  '+title,x+.22,2.65,5.32,.46,22,'blue',True)
+    line(s,x+.22,3.23,x+5.54,3.23)
+    photo(s,shot,x+.18,3.48,1.7,3.35)
+    for i,(head,body) in enumerate(bullets):
+        y=3.53+i*1.03
+        text(s,head,x+2.08,y,3.43,.35,18,'navy',True)
+        text(s,body,x+2.08,y+.45,3.43,.58,16)
+
+# 1. The starting project and the learning motivation, in the user's words.
+s=base('기존 대사 시스템을 AI 에이전트 개발의 학습 대상으로 삼았습니다',
+       '소규모 사업자를 위한 Java 프로젝트를 실제로 확장하며 작업 방식을 익혔습니다.')
+small_label(s,'출발점',.83,2.62)
+text(s,'이미 개발한\n잔액 대사 시스템',.83,3.14,5.1,1.13,32,'navy',True)
+text(s,'날짜별 예정 금액과 은행 입출금 비교',.85,4.63,5.4,.48,20)
+arrow(s,6.1,3.65,.6,.36)
+small_label(s,'학습 목표',7.32,2.62)
+text(s,'AI 에이전트를 구성하고\n개발·검토를 연결하기',7.32,3.14,5.2,1.13,30,'navy',True)
+text(s,'기존 코드를 보존하면서 미수금 관리로 확장',7.33,4.63,5.2,.7,20)
+rect(s,.83,5.98,11.65,.9,'pale')
+text(s,'코드 생성뿐 아니라 작업 분배 → 실행 → 검토 → 수정까지 경험하는 것이 목적',1.04,6.23,11.2,.42,23,'navy',True)
+notes(s,'기존에 소규모 사업자가 사용할 잔액 대사 시스템을 개발했습니다. 이번에는 AI 에이전트 개발을 공부하기 위해 그 프로젝트를 학습 대상으로 선택했습니다. '
+      '단순히 코드를 만들어 달라고 하는 데서 끝내지 않고, 작업을 나누고 실제 실행과 검토를 이어가는 과정을 경험하고 싶었습니다. 기존 기능을 보존하면서 청구별 미수금 관리로 확장했습니다.',
+      '2026-11-05 사용자 설명에 따른 동기. 기존 코드 전부를 AI 없이 직접 작성했다고 확대하지 않습니다. 기존 Java 대사에서 FREE 미수금으로 확장한 이력은 docs/PORTFOLIO.md와 AI_REVIEW_WORK.md.')
+
+# 2. Selection rationale, without invented competitor benchmarks.
+s=base('왜 Claude Code가 아닌 Codex를 선택했나',
+       '선택 기준은 이번 프로젝트에 연결된 작업 환경과 역할 분담을 활용한 학습이었습니다.')
+for title,x in [('필요했던 작업',.86),('Codex에서 활용한 방식',4.48),('프로젝트에 맞았던 이유',8.75)]:small_label(s,title,x,2.53,3.8)
+rows=[('기존 코드·DB 파악','저장소와 실행 환경에서 함께 확인','처음부터 다시 만들지 않아도 됨'),('역할별 작업 분담','총괄·하위 역할로 파일 범위 배분','조사 결과를 구현과 검토에 연결'),('결과를 실행으로 확인','수정·테스트·Git 기록 연결','설명과 실제 동작을 함께 확인')]
+for i,(a,b,c) in enumerate(rows):
+ y=3.08+i*.98
+ text(s,a,.86,y,3.35,.65,21,'navy',True);text(s,b,4.48,y,4.0,.7,19);text(s,c,8.75,y,3.6,.7,18)
+ line(s,.86,y+.74,12.46,y+.74)
+rect(s,.83,6.43,11.66,.65,'pale')
+text(s,'선택의 근거: 이미 연결된 Codex 작업 환경 + 총괄·하위 역할을 활용한 개발 흐름',1.04,6.61,11.2,.35,18,'blue',True)
+notes(s,'왜 Claude나 다른 도구 대신 Codex였는지에 대한 제 기준은 성능 순위가 아니라 작업 환경과 진행 방식이었습니다. 이 프로젝트는 Codex에 저장소와 실행 환경이 이미 연결되어 있었고, '
+      '총괄 아래 역할을 나누어 코드 수정과 테스트 실행을 이어갈 수 있었습니다. 같은 저장소에서 결과를 모으는 방식을 활용하기 위해 선택했습니다. '
+      'Claude Code 등에도 저장소 작업 기능이 있으므로 이런 기능이 Codex에만 있다고 말하지 않습니다. 별도 도구 비교 실험이나 속도·비용 우위를 측정한 것은 아닙니다.',
+      '사용자 지시와 AGENTS.md, 실제 작업 이력에 근거한 선택 배경. 경쟁 제품의 미지원 기능이나 측정하지 않은 성능 차이를 주장하지 않습니다. Codex가 모든 실행환경에서 동일한 기능을 제공한다는 일반화도 하지 않습니다.')
+
+# 3. Development organization and handoffs.
+s=base('총괄 아래 기획·조사·디자인·개발·검토 역할을 구성했습니다',
+       '제가 목표와 업무 기준을 정하고, 총괄 에이전트가 작업 배분과 결과 통합을 맡았습니다.')
+rect(s,3.75,2.54,5.85,.7,'blue')
+text(s,'총괄 에이전트 · 범위 관리와 결과 통합',3.94,2.74,5.48,.37,21,'FFFFFF',True,align=PP_ALIGN.CENTER)
+line(s,6.67,3.24,6.67,3.52,'blue');line(s,1.87,3.52,11.44,3.52,'blue')
+roles=[('기획·분석','업무·기존 코드\n재사용 경계'),('자료조사','사용자 문제\n우선 기능'),('디자인','등록·확정 흐름\n금액과 상태'),('개발','담당 파일 구현\n실행·테스트'),('독립 검토','오류 재현\n수정 후 확인')]
 for i,(title,body) in enumerate(roles):
-    x=5.0+i*1.53
-    line(s,x+.69,3.25,x+.69,3.64,'line')
-    rect(s,x,3.64,1.38,1.49,'light','line',True)
-    text(s,title,x+.04,3.85,1.3,.32,16,'blue',True,align=PP_ALIGN.CENTER)
-    text(s,body,x+.04,4.39,1.3,.62,14,align=PP_ALIGN.CENTER)
-text(s,'분석 → 범위·설계 → 구현 → 검토 → 수정·재검증',5.03,5.57,7.5,.4,18,'navy',True)
-text(s,'필요한 역할을 단계별로 투입 · 동시 하위 에이전트 최대 2개',5.03,6.13,7.5,.36,15,'muted')
-rect(s,.75,6.74,11.83,.045,'line')
-text(s,'업무 기준: Java 금액 계산 · 사용자 확정 · 원본 보존 · FREE AI 호출 없음',.79,6.95,11.8,.31,16,'navy')
-note(s,'발표: 기존 프로젝트를 버리고 다시 만드는 방식보다 저장소를 읽고 수정과 실행을 이어갈 작업 환경이 필요했습니다. Codex에서 총괄 아래 기획·조사·디자인·개발·검토 역할을 나누도록 했습니다. '
-     '독립적인 조사와 코드 분석은 병행하고, 화면은 도메인과 API가 정리된 뒤 연결했습니다. 구현 담당과 검토 담당을 나누어 발견한 오류를 다시 수정하게 했습니다. '
-     '제가 지정한 원칙은 Java 금액 계산, 사람의 확정, 원본 보존, FREE AI 호출 금지였습니다. 세부 DB·잠금·코드 설계는 에이전트가 수행했고 이를 전부 직접 설계했다고 설명하지 않습니다. '
-     '근거: AGENTS.md, docs/AI_REVIEW_WORK.md, docs/adr/0002-receivables-decisions.md. 역할은 책임 구분이며 5개 에이전트 상시 동시 실행을 뜻하지 않습니다. 도구별 성능·생산성 배수 비교는 측정하지 않았습니다.')
+ x=.83+2.39*i;line(s,x+1.04,3.52,x+1.04,3.86,'blue')
+ rect(s,x,3.86,2.1,1.55,'FFFFFF','line')
+ text(s,title,x+.12,4.06,1.86,.4,20,'blue',True,align=PP_ALIGN.CENTER)
+ text(s,body,x+.12,4.67,1.86,.62,16,align=PP_ALIGN.CENTER)
+text(s,'분석 결과 → 범위·설계 → 기능별 구현 → 독립 검토 → 수정·재검증',.86,5.98,11.6,.43,23,'navy',True)
+text(s,'독립 작업은 병행하고, 선행 결과가 필요한 작업은 순서대로 진행',.87,6.69,11.5,.38,19,'muted')
+notes(s,'총괄이 기획·조사·디자인·개발·검토를 조율하도록 요청했습니다. 역할 이름만 정하는 대신 각 역할이 넘길 결과를 정했습니다. 기존 코드 분석은 재사용 범위로, 디자인은 화면 흐름으로, 검토는 재현 절차와 수정 요구로 연결했습니다. '
+      '동시에 모든 역할을 실행하지 않았고 하위 에이전트는 최대2개로 제한했습니다. 작업 파일 범위를 나눠 충돌을 줄이고 중요한 변경은 개발자 판단을 거치도록 작업 규칙을 정리했습니다.',
+      'AGENTS.md와 AI_REVIEW_WORK.md. 표는 책임 구조이며 실제 팀 인원 또는 항상5개 동시 실행을 의미하지 않습니다. 사용자 목표·규칙 설정과 에이전트 세부 설계·구현은 구분합니다.')
 
-# 3. Runtime architecture and concrete stack, with the lab path clearly separate.
-s = base('금액과 확정은 서버에서, AI는 조회 결과를 설명하도록 구성했습니다',
-         '제품 실행 구조와 별도의 Hermes 실습 경로')
-for x,title,body in [(.75,'화면','TypeScript · React Native\nExpo · React'),(4.9,'백엔드','Java 21 · Spring Boot\nSpring Security · JDBC'),(9.05,'데이터·빌드','PostgreSQL 17\nFlyway · Gradle 빌드')]:
-    rect(s,x,2.51,3.52,1.55,'pale',radius=True)
-    text(s,title,x+.18,2.71,3.16,.35,21,'blue',True)
-    text(s,body,x+.18,3.24,3.16,.67,18)
-arrow(s,4.39,3.11);arrow(s,8.54,3.11)
-text(s,'Controller → Service → JdbcTemplate(SQL) → DB',.8,4.32,11.8,.36,20,'navy',True)
-text(s,'신규 청구·입금·배분은 별도 모델로 추가 · 기존 대사 모듈의 JPA 구조 유지',.8,4.86,11.8,.35,17,'muted')
-rect(s,.75,5.48,11.83,1.13,'light','line',True)
-text(s,'로컬 실습',.94,5.65,1.45,.34,18,'blue',True)
-text(s,'Hermes → Python 조회 도구 → 인증된 Java GET → 현재 원장 요약',2.54,5.68,9.7,.36,19,'navy',True)
-text(s,'모델 입력은 날짜만 · 서버 금액과 API 근거 반환 · FREE 제품과 별도',2.54,6.2,9.6,.3,16,'muted')
-text(s,'검증: JUnit · PostgreSQL 통합 테스트 · Playwright · Python unittest',.8,6.94,11.8,.32,16,'muted')
-note(s,'발표: 제품은 Expo 화면, Spring Boot API, PostgreSQL로 구성됩니다. 신규 미수금은 Controller-Service-JdbcTemplate SQL 흐름이며 기존 대사의 JPA Repository는 유지했습니다. '
-     '서버는 인증과 사업체 권한을 확인하고, 확정 트랜잭션에서 요청 키 확인·부모 잠금·잔액 재검사·배분과 감사 저장을 수행합니다. 금액은 Java의 정확한 타입과 DB로 처리하고 API에는 문자열로 전달합니다. '
-     '별도 학습으로 제가 Windows WSL2 Ubuntu에 Hermes와 Java/PostgreSQL을 설치했습니다. Python 도구가 인증 파일을 읽어 localhost의 GET만 호출하게 하고, 모델에는 날짜만 입력받게 했습니다. '
-     'asOf는 현재 원장 연체 판정 기준일입니다. 특정일 거래·과거 잔액·개별 원본 조회가 아닙니다. 도구 GET 제한은 읽기 전용 서버 자격증명과 같지 않으며 제품 FREE AI 개방이 아닙니다. '
-     '버전 근거: backend-java/build.gradle(Spring Boot4.1.1), mobile/package.json(Expo58/ReactNative0.88/React19/TypeScript), FlywayV1~V13. Hermes0.22.6, Windows WSL2, Git/GitHub를 사용했습니다. '
-     'MCP·RAG·Fastify·WebSocket·Docker 배포 구현 경험으로 표현하지 않습니다. 세부 아키텍처 docs/architecture.md, plugin examples/hermes/chagok-local-api.')
+# 4. Product architecture and technical stack.
+s=base('작업 결과는 청구·입금·배분을 관리하는 서비스로 확장됐습니다',
+       '기존 대사 기능을 유지하고, 사업체별 미수금 모델과 모바일 화면을 추가했습니다.')
+block(s,'모바일·웹 화면','TypeScript · React Native\nExpo · React',.83,2.52,3.23,1.73)
+block(s,'Spring Boot API','Java 21 · Spring Security\n세션·사업체 권한 검사',5.05,2.52,3.23,1.73,'pale')
+block(s,'PostgreSQL 17','원본 · 배분 · 취소·감사\nFlyway V1–V13',9.27,2.52,3.23,1.73)
+arrow(s,4.31,3.19,.47);arrow(s,8.53,3.19,.47)
+text(s,'Controller → Service → JdbcTemplate(SQL) → DB',.87,4.68,11.5,.45,25,'navy',True)
+small_label(s,'핵심 데이터 관계',.87,5.55)
+text(s,'입금  1 : N  배분 라인  N : 1  청구',.87,6.08,8.15,.43,25,'blue',True)
+text(s,'부분·묶음 입금을 표현',9.1,6.13,3.35,.4,18)
+text(s,'기존 대사 JPA 구조 유지    |    빌드·관리: Gradle · Git/GitHub',.88,6.96,11.4,.33,17,'muted')
+notes(s,'제품은 Expo 클라이언트에서 Spring Boot API를 거쳐 PostgreSQL에 접근합니다. 신규 미수금 모듈은 JdbcTemplate SQL 구조이며 기존 대사 JPA Repository는 그대로 유지했습니다. '
+      '입금과 청구 사이의 배분 라인으로 부분·묶음 입금을 표현합니다. 확정은 사용자가 요청하고 금액 계산과 잔액 검사는 Java와 DB 트랜잭션에서 처리합니다. FREE 흐름에는 모델 호출이 없습니다.',
+      'docs/architecture.md, receivables-erd.md, backend-java/build.gradle, mobile/package.json. 모바일 공통 코드와 브라우저 검증 경로이며 iOS/Android스토어 출시 완료는 아닙니다. DDL·잠금은 에이전트 구현입니다.')
 
-# 4. Result: verified user execution plus one concrete development defect.
-s = base('제 PC에서 전체 테스트와 실제 AI 도구 연결을 확인했습니다',
-         '2026.11.04 · WSL2 / Java 21 / PostgreSQL 17 · 개발·테스트 DB 분리')
-rect(s,.75,2.53,3.4,2.04,'pale',radius=True)
-text(s,'186',.98,2.79,2.95,.86,54,'blue',True)
-text(s,'백엔드 테스트 통과',1.0,3.77,2.94,.38,20,'navy',True)
-text(s,'실패·오류·스킵 0',1.0,4.19,2.9,.3,16,'muted')
-text(s,'Hermes → 실제 Java API',4.65,2.68,7.76,.4,23,'navy',True)
-text(s,'청구 100,000원  /  확정 배분 40,000원  /  미수 60,000원',4.67,3.34,7.85,.41,20,'blue',True)
-text(s,'도구 실행 표시와 API 근거를 확인\n현재 원장 요약과 개별 거래 조회의 범위를 구분',4.67,4.0,7.85,.73,18)
-line(s,.78,5.08,12.53,5.08)
-text(s,'개발 중 수정한 문제',.79,5.43,3.5,.4,22,'navy',True)
-text(s,'저장 후 응답 유실 → 공백 수정으로 요청 키가 바뀌는 문제 발견',4.66,5.4,7.86,.39,18)
-text(s,'정규화한 내용에 같은 키 유지 → 재시도 후 입금 1건 확인',4.66,6.0,7.86,.4,18,'blue',True)
-text(s,'추가 검사: 잘못된 날짜 거절 · 모의 인증 오류와 연결 실패를 자료 없음과 구분',.8,6.88,11.75,.37,17,'muted')
-note(s,'발표: 직접 실행하면서 두 가지를 확인했습니다. 먼저 개발·테스트 DB 계정을 분리하고 교차 접속을 막았습니다. 전체 테스트를 실행해 XML 보고서의 186개 모두 통과를 확인했습니다. '
-     '이후 합성 계정에 10만 원 청구와 4만 원 확정 배분을 준비했습니다. Python 함수로 실제 API를 확인한 뒤 Hermes에서 조회 도구 실행 표시와 미수 6만 원, API 경로를 포함한 답변을 확인했습니다. '
-     '잘못된 날짜도 직접 검사했고 인증 401·연결 실패는 모의 오류로 검사했습니다. 실제 인증 만료나 서버 중단을 모델로 재현한 것은 아닙니다. '
-     '아래 중복 저장 사례의 발견·수정·브라우저 검증은 이전 에이전트 작업입니다. 사용자 PC의 전체 실행과 구분합니다. '
-     '근거: 사용자 제공 로그·화면 및 도구 실행 확인, docs/PORTFOLIO_LEARNING.md, docs/receivables-mobile-core-review.md. 사용자 PC 모델 원시 로그를 총괄이 직접 수집한 것은 아닙니다. '
-     '기존2026-11-01 클라이언트13개·브라우저9+9개 및 별도클라우드plugin단위10개는 이186개와 합산하지 않습니다. 정상 실습 경로 확인이지 PRO 제품 출시 검증이 아닙니다.')
+# 5 and 6. Five concrete development items, each shown once with a real photo.
+s=base('핵심 개발 01–02 | 계정과 거래 원본을 관리합니다',
+       '서버의 사업체 권한 검사부터 청구·입금 등록까지')
+feature(s,'01','계정·사업체 접근 제어','account',[
+ ('인증과 소유권','세션과 멤버십을 서버에서 확인'),('사업체별 데이터','다른 사업체 자료 접근 차단'),('등급·사용량','성공한 후보 실행만 집계')],.83)
+feature(s,'02','청구·입금 등록','registration',[
+ ('청구 조건','거래처·금액·지급기한 입력'),('입금 원본','입금자·날짜·금액 별도 기록'),('재요청 처리','같은 키의 요청은 결과 재사용')],6.74)
+notes(s,'첫 번째는 인증과 사업체 접근 제어입니다. 화면만 나누는 것이 아니라 API가 세션과 멤버십을 확인합니다. 두 번째는 청구와 입금 원본을 따로 등록하는 기능입니다. 입금 등록만으로 미수가 줄지 않도록 했습니다. '
+      '표시된 계정과 거래는 시연용 데이터입니다. 계정 화면 자체가 권한 격리의 증거는 아니며 서버 통합 테스트를 근거로 설명합니다.',
+      '실제 브라우저 캡처 portfolio-nov05-account/registration.png. AuthController, TenantAccess와 ReceivablesService 등 기존 계정·등록 모듈; docs/RECEIVABLES_REGISTRATION.md, RECEIVABLES_USAGE.md. 테스트 계정 토큰·비밀번호는 자료에 포함하지 않습니다.')
+s=base('핵심 개발 03–04 | 후보를 검토하고 연결 금액을 확정합니다',
+       '추천과 확정을 분리해 현재 잔액을 기준으로 처리합니다.')
+feature(s,'03','규칙 기반 매칭 후보','candidates',[
+ ('조회 범위','선택한 기간의 거래를 조회'),('후보 근거','날짜·금액·입금자명으로 제안'),('검토 단계','후보 생성만으로 배분하지 않음')],.83)
+feature(s,'04','배분·미수금 계산','confirmed-outstanding',[
+ ('부분·묶음 연결','여러 입금과 청구에 금액 배분'),('확정 직전 검사','부모 행 잠금 후 잔액 재검사'),('서버 계산 결과','확정된 금액만 미수에 반영')],6.74)
+notes(s,'세 번째는 규칙 기반 후보 생성입니다. 날짜·금액·이름이 같아도 같은 거래라고 단정하지 않고 사용자가 검토하게 했습니다. 네 번째는 배분 확정과 미수금 계산입니다. '
+      '검토 중 잔액이 바뀔 수 있기 때문에 확정 시 서버가 부모 행을 잠그고 다시 검사합니다. 후보 조회의 기간 조건과 현재 미수 요약의 asOf 의미는 다릅니다.',
+      'portfolio-nov05-candidates/confirmed-outstanding.png; MatchingService, AllocationService.confirm/lockAndValidate/checkAvailable. 사용자 확정·Java 금액 계산 원칙은 개발자 지정, 구현은 에이전트 수행. 실제 화면과 서버 잔액 검증 근거는 docs/demo/manifest.json.')
+s=base('핵심 개발 05 | 연결 취소와 감사 이력을 남깁니다',
+       '입금 원본과 확정 기록을 보존하면서 취소된 배분을 잔액 계산에서 제외합니다.')
+rect(s,.83,2.43,4.1,4.66,'FFFFFF','line')
+photo(s,'cancellation-audit',1.02,2.62,3.72,4.26)
+small_label(s,'취소 요청에 남기는 정보',5.5,2.68)
+text(s,'누가 · 언제 · 어떤 사유로 취소했는가',5.5,3.23,6.7,.48,26,'navy',True)
+for i,(a,b) in enumerate([('원본 보존','입금·청구·기존 배분 라인을 삭제하지 않음'),('잔액 복원','취소한 연결을 제외해 미수금을 다시 계산'),('한 번에 저장','취소 기록·감사·명령 결과를 함께 커밋')]):
+ y=4.17+i*.86
+ text(s,a,5.52,y,1.8,.4,20,'blue',True)
+ text(s,b,7.42,y,4.9,.62,18)
+text(s,'시연 영상 보기 ↗',10.0,6.93,2.45,.34,18,'blue',True,link=VIDEO)
+notes(s,'다섯 번째는 취소와 감사 이력입니다. 잘못 연결했다면 사유를 남기고 취소합니다. 실제 통장의 입금 원본을 지우거나 돈을 환불하는 기능은 아닙니다. '
+      '배분이 취소됐다는 기록을 추가하고 활성 배분에서 제외해 미수를 복원합니다. 저장 과정이 실패하면 취소와 감사 기록이 따로 남지 않도록 같은 트랜잭션에서 처리합니다.',
+      'portfolio-nov05-cancellation-audit.png; AllocationService.cancel/audit; V10; docs/RECEIVABLES_ALLOCATION.md. 취소 이력과 현재 상태 조회는 과거 멱등 명령 응답과 구분합니다.')
 
-# 5. Lessons and contribution in the developer's own verifiable scope.
-s = base('배운 점은 업무 규칙을 코드와 실행 결과로 확인하는 방법입니다',
-         'AI가 만든 결과를 받아보는 데서, 직접 실행하고 실패 조건을 확인하는 단계로')
-for i,(title,body) in enumerate([
-    ('합계와 연결은 다르다','입금 등록만으로 미수가 줄지 않음\n확정·취소와 원본 보존을 구분'),
-    ('실패 뒤 잔액도 확인한다','재시도는 기존 요청 키로\n다른 키의 경쟁은 잠금 후 재검사'),
-    ('조회 범위가 답변의 한계다','자료 없음과 조회 실패를 구분\n현재 원장과 과거 잔액을 구분')]):
-    x=.75+4.16*i
-    rect(s,x,2.52,3.51,1.88,'light','line',True)
-    text(s,title,x+.17,2.75,3.17,.39,20,'blue',True)
-    text(s,body,x+.17,3.37,3.17,.79,16)
-text(s,'제가 직접 한 일',.79,4.85,5.6,.42,23,'navy',True)
-text(s,'목표·업무 기준 설정, 에이전트 역할 구성\n안내에 따라 환경 설치·전체 테스트 실행\nHermes 필드 수정·조회 도구 실행·오류 검사',.8,5.51,5.75,1.26,18)
-text(s,'에이전트에 맡긴 일',7.02,4.85,5.5,.42,23,'navy',True)
-text(s,'세부 설계·제품 코드 구현\n독립 검토·결함 재현·수정\n학습 예제와 검사 명령 제공',7.03,5.51,5.46,1.26,18)
-text(s,'다음 과제: 핵심 코드 직접 설명 · 실기기·운영 검증    /    Docker·배포는 보류',.8,7.0,11.8,.3,15,'muted')
-note(s,'발표: 가장 크게 배운 것은 업무 용어를 코드와 데이터 상태로 나누는 일입니다. 입금이 있어도 연결이 확정되지 않으면 미수는 남습니다. '
-     '응답이 끊겼을 때 새 키를 만들면 중복 위험이 생기고, 다른 키로 같은 입금을 동시에 사용하는 문제는 잠금과 잔액 검사로 다뤄야 한다는 차이를 학습했습니다. '
-     '오류 응답 뒤 미수와 미배분 금액이 유지되는지도 확인해야 합니다. 저는 안내를 받아 assertMoney(paymentBalance(owner,p1), "unallocatedAmount", "60"); 한 줄을 작성했습니다. 파일 반영과 그 테스트 실행은 에이전트가 했습니다. '
-     '이번에는 제 PC에서 설치와 명령 실행, 예제 적용과 필드 수정, 전체 테스트와 실제 도구 호출까지 수행했습니다. 코드 예제와 절차는 에이전트 도움을 받았습니다. '
-     '전체 구현을 직접 설계했다고 표현하지 않고, 이제 핵심 코드와 트랜잭션을 스스로 설명할 수 있도록 학습을 이어갑니다. Docker 설치와 공개 배포는 보류했습니다. '
-     'iOS/Android 실기기, 공개 운영 보안, 사용자 파일럿과 PRO 제품 연동은 별도 후속입니다. 근거 docs/PORTFOLIO_LEARNING.md.')
+# 8. Concrete benefit of independent agent review.
+s=base('독립 검토는 실제 수정으로 이어졌습니다',
+       '저장 후 응답이 끊긴 상황에서 발견한 중복 저장 위험')
+for i,(a,b) in enumerate([('DB 저장은 성공','화면은 응답을 받지 못함'),('공백만 수정해 재시도','요청 키가 새로 만들어짐'),('서버는 다른 명령으로 판단','중복 저장 가능성 발생')]):
+ x=.85+4.17*i;text(s,a,x,2.94,3.65,.62,23,'navy',True);text(s,b,x,3.86,3.6,.75,18)
+ if i<2:arrow(s,x+3.7,3.24,.3,.2)
+line(s,.85,4.95,12.44,4.95)
+small_label(s,'수정',.85,5.41,1.3);text(s,'정규화한 내용이 같으면 기존 요청 키 유지',2.35,5.35,9.8,.48,24,'navy',True)
+small_label(s,'검증',.85,6.39,1.3);text(s,'저장 후 503 응답을 재현 → 같은 키 재시도 → 입금 1건 확인',2.35,6.33,9.9,.68,21,'blue',True)
+notes(s,'구현 담당과 검토 담당을 분리한 효과를 보여주는 사례입니다. 검토에서 공백만 바꿔도 요청 키가 바뀌는 문제가 드러났습니다. 저장은 이미 됐는데 새 키로 다시 요청하면 중복 위험이 생깁니다. '
+      '정규화된 내용이 같으면 키를 유지하도록 수정하고 실제 DB 저장 뒤 응답만503으로 바꿔 검증했습니다. 이 결함 발견과 코드 수정·재현은 에이전트가 수행했습니다.',
+      'docs/receivables-mobile-core-review.md, Registration.submit, CommandKey.forPayload, scripts/verify-receivables-mobile-browser.py. 2026-11-01 검증 기록이며 이번 자료 작업에서 새로 재현했다고 주장하지 않습니다.')
 
-OUT.mkdir(parents=True, exist_ok=True)
-prs.save(OUT / 'chagok-project.pptx')
-print(OUT / 'chagok-project.pptx')
+# 9. Agent development learning beyond using the coding assistant.
+s=base('직접 설치한 Hermes에는 읽기 전용 조회 도구를 연결했습니다',
+       '에이전트 활용에서 도구 입력·권한·응답 범위를 직접 확인하는 실습으로 이어갔습니다.')
+for i,(a,b) in enumerate([('Hermes','날짜를 받아 도구 호출'),('Python 도구','인증된 GET만 실행'),('Java API + DB','현재 원장 금액 반환')]):
+ x=.83+4.22*i;block(s,a,b,x,2.6,3.22,1.5,'pale' if i==1 else 'light')
+ if i<2:arrow(s,x+3.46,3.22,.45)
+small_label(s,'확인한 응답',.88,4.65)
+for x,label,value in [(.88,'청구액','100,000원'),(4.32,'확정 배분','40,000원'),(7.76,'미수금','60,000원')]:
+ text(s,label,x,5.24,3.2,.32,17,'muted');text(s,value,x,5.76,3.2,.62,32,'navy',True)
+text(s,'현재 원장 요약과 API 경로를 근거로 설명 · 제품 FREE 기능과 별도 실습',.88,6.94,11.6,.34,18,'blue',True)
+notes(s,'Hermes는 제 PC에 직접 설치하고 에이전트가 제공한 예제를 적용했습니다. 거래처 필드를 수정한 뒤 실제 Java GET을 연결했습니다. 직접 함수 출력과 Hermes의 실제 도구 실행 표시를 확인했습니다. '
+      '도구는 주소·사업체·토큰을 모델이 지정하지 못하게 하고 날짜만 받습니다. asOf는 현재 원장의 연체 판정 기준일이며 특정일 거래나 과거 잔액 조회가 아닙니다. '
+      '이 슬라이드의 금액은 대화에 공유한 실제 실습 응답을 정리한 것이고 새 터미널 캡처를 만들어 넣지 않았습니다.',
+      'examples/hermes/chagok-local-api; docs/PORTFOLIO_LEARNING.md. 11/04 사용자 제공 실행 로그·호출 표시 확인. native Hermes 플러그인이며 MCP 구현으로 표현하지 않습니다. 세션은 쓰기 권한도 있으므로 도구 GET 제한과 서버 읽기전용 토큰을 혼동하지 않습니다. PRO 제품 출시 검증은 미완료.')
+
+# 10. Outcomes with bounded evidence rather than productivity claims.
+s=base('기존 기능을 보존하고, 검토 가능한 결과를 남겼습니다')
+for i,(a,b) in enumerate([('기존 시스템 재사용','Java·PostgreSQL·기존 대사 API 유지'),('기능별 검토·수정','독립 검토의 재현 절차를 구현에 반영'),('개인 PC 실행 확인','환경 구성부터 전체 테스트·도구 호출까지 수행')]):
+ y=2.5+i*.78;text(s,a,.86,y,3.6,.45,23,'blue',True);text(s,b,4.8,y,7.6,.48,21)
+line(s,.86,5.02,12.42,5.02)
+small_label(s,'검증 근거',.86,5.35)
+text(s,'백엔드 186개 통과',.86,5.94,5.8,.5,28,'navy',True)
+text(s,'11.04 · 사용자 PC / 실패·오류·스킵 0',.88,6.58,5.9,.34,17,'muted')
+text(s,'클라이언트 13개 · 브라우저 9 + 9개',7.04,5.94,5.42,.7,22,'navy',True)
+text(s,'11.01 · 기존 에이전트 실행 기록',7.05,6.66,5.4,.34,17,'muted')
+notes(s,'좋았던 점은 기존 시스템을 유지하면서 기능별 구현과 검토를 이어갈 수 있었다는 점입니다. 생산성 몇 배나 시간 절감률은 측정하지 않았습니다. 대신 재사용한 기술과 실제 수정 사례, 실행 결과를 근거로 설명합니다. '
+      '제 PC에서는 테스트 DB를 분리해 백엔드186개를 실행했고 실패·오류·스킵0을 확인했습니다. 클라이언트와 브라우저 수치는 기존 에이전트 실행 기록입니다.',
+      'docs/PORTFOLIO_LEARNING.md, RECEIVABLES_MOBILE_MATCHING.md. 총 테스트 횟수로 합산하지 않습니다. 새영상 녹화/문구변경 검사는 docs/demo/manifest.json에 별도 기록합니다. 실기기·공개운영·고객파일럿은 미완료입니다.')
+
+# 11. Learning and honest contribution, with the one concrete authored assertion.
+s=base('업무 규칙을 정하고, 실패 뒤의 데이터까지 확인하는 법을 배웠습니다')
+rect(s,.83,2.42,11.66,.91,'navy')
+text(s,'assertMoney(paymentBalance(owner, p1), "unallocatedAmount", "60");',1.06,2.7,11.14,.42,21,'FFFFFF')
+text(s,'같은 키로 금액을 바꾼 요청이 거절된 뒤, 미배분 잔액 60원이 유지되는지 검사',.87,3.65,11.5,.72,22,'navy',True)
+small_label(s,'직접 수행한 일',.87,4.93)
+text(s,'목표·업무 기준과 에이전트 역할 구성\n안내에 따른 assertion 작성·검증 위치 설명\n환경 설치·테스트·Hermes 예제 수정과 실행',.87,5.48,6.2,1.35,19)
+small_label(s,'배운 점',7.85,4.93,4.5)
+text(s,'요청 키와 동시성 문제를 구분\n원본 보존과 배분 취소를 구분\n조회 범위를 넘는 AI 설명을 경계',7.85,5.48,4.6,1.35,19)
+notes(s,'저는 업무 기준과 역할을 정하고 실제 환경에서 실행했습니다. 이 assertion은 안내된 메서드와 필드를 사용해 직접 채팅에 작성한 한 줄이며 파일 반영과 해당 테스트 실행은 에이전트가 했습니다. '
+      '성공 응답뿐 아니라 실패 후 잔액이 변하지 않았는지 확인해야 한다는 점을 배웠습니다. 같은 키의 재시도와 다른 키의 동시 배분도 서로 다른 문제임을 설명하는 연습을 했습니다. '
+      '세부 설계·제품 코드·검토 실행에는 AI를 활용했고 전체를 독자 구현했다고 표현하지 않습니다. 다음 단계는 핵심 코드를 직접 설명하는 것과 실기기·운영 검증입니다. Docker는 보류했습니다.',
+      'docs/PORTFOLIO_LEARNING.md; AllocationIntegrationTest.idempotentConfirmationNormalizesOrderAndPreservesOriginalSnapshotAfterCancellation. 이 테스트는 원금100/배분40/잔여60원으로 축소한 값이며 앞 실습의10만/4만/6만과 구분합니다.')
+
+OUT.mkdir(parents=True,exist_ok=True)
+prs.save(OUT/'chagok-project.pptx')
+print(f'{len(prs.slides)} slides: {OUT / "chagok-project.pptx"}')

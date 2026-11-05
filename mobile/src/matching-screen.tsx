@@ -13,7 +13,7 @@ import { Button, Empty, Field, Heading, Loading, Notice, QueryError, s } from '.
 type CancelMemory = Record<string, { command: CommandKey; reason: string }>;
 type Props = { w: Workspace; refresh: number; busyChange(value: boolean): void; changed(): void };
 export function MatchingScreen(props: Props) {
-  if (props.w.sample) return <><Heading eyebrow="읽기 전용 샘플" title="입금 연결" subtitle="실제 사업장에서 후보를 검토하고 직접 연결할 수 있어요." /><Notice>샘플은 합성 장부를 읽기만 해요. 후보 생성·연결 확정·취소와 실제 API·사용량을 사용하지 않아요.</Notice></>;
+  if (props.w.sample) return <><Heading eyebrow="읽기 전용 샘플" title="입금 연결" subtitle="실제 사업장에서 후보를 검토하고 직접 연결할 수 있어요." /><Notice>샘플 장부는 읽기 전용이에요. 후보 생성·연결 확정·취소와 실제 API·사용량을 사용하지 않아요.</Notice></>;
   return <LiveMatching {...props} />;
 }
 function LiveMatching({ w, refresh, busyChange, changed }: Props) {

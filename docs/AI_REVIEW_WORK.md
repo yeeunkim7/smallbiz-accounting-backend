@@ -200,3 +200,10 @@ PPT/PDF9장 렌더와 시각 검사, 발표자 노트·도형/PDF 텍스트 경�
 핵심5가지(계정·사업체 권한/청구·입금 등록/규칙 후보/배분·미수/취소·감사)에 실제 화면을 넣었다. 영상은 새 실제JavaAPI+Expo 브라우저 녹화106초로 갱신했다. 차곡 공방·A 거래처·11월 청구·연결 내역 재확인으로 이름을 바꾸고 반복된 합성 문구·회색 안내를 제거했다. 읽기전용 샘플의 의미는 유지하고 시연 데이터 설명은 영상 README에 남겼다. UI표시4파일 외 금융로직·DB구조를 바꾸지 않았다. 과거 실습·검증 기록의 데이터 성격은 소급해 바꾸지 않는다.
 
 재녹화의 최초 실행은 Playwright ffmpeg 경로 누락, 다음은 CORS403으로 로그인 실패였다. 기존ffmpeg 경로연결과 정확한 localhost origin 허용 후 preflight200·로그인 성공을 확인하고 녹화했다. 격리된 reconciliation_test만 사용, 자신이 생성한 계정/tenant만 정리했다. 미수100000→60000→0→60000, 후보생성1회/자동배분0, 취소감사2건·사용량1회유지·브라우저오류0을 확인했다. 모바일13개와 typecheck통과, 영상전체decode·2650프레임·106초 및 대표화면확인. PPT/PDF11장 렌더·범위·독립문서검토 완료. 기존백엔드186개는11/04 사용자PC기록이며 이번전체재실행결과가 아니다. 유료모델호출·Docker·공개배포 없음.
+
+
+## 2026-11-10 테스트 DB 격리 가드 검수 1단계
+
+사용자의 다음 단계 진행 지시로 테스트용 가드만 보강했다. 정확한 reconciliation_test 이름과 명시적 PostgreSQL URL을 접속 전에 검사하고, 지원 옵션을 제한했다. Spring 실제 datasource가 환경 변수와 다른 경우 및 별도 Flyway·Hikari·JNDI·DataSource 설정을 거절한다. 독립 검토에서 발견한 Hikari DataSource class/중첩 databaseName 우회 경로를 수정하고 재검토했다. 제품 소스·마이그레이션은 변경하지 않았다.
+
+가드 단위 테스트 10개 통과(실패·오류·스킵 0). 명령: JAVA_HOME=/workspace/.local/jdk/usr/lib/jvm/java-21-openjdk-amd64 GRADLE_USER_HOME=/workspace/.gradle bash gradlew --offline --no-daemon --project-cache-dir /workspace/.local/gradle-project -Dorg.gradle.java.installations.paths=/workspace/.local/jdk/usr/lib/jvm/java-21-openjdk-amd64 test --tests com.smallbiz.reconciliation.vendor.TestDatabaseIsolationTest. 최초 캐시 권한·샌드박스 인터페이스 제한·시스템 JRE의 javac 누락으로 실행 전 중단됐고, 기존 작업 공간 JDK21을 확인·지정한 뒤 성공했다. 새 설치·실제 DB 연결·Flyway 실행·DB 역할 권한 확인·전체 회귀·유료 API 호출은 하지 않았다. 사용자 코드 검토와 실제 테스트 역할의 권한 확인은 남아 있으며, 다음 업무 검수는 아직 시작하지 않았다. 커밋·푸시는 하지 않았다.

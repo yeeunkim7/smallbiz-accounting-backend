@@ -8,6 +8,7 @@ public class RejectDevelopmentDatabaseInitializer
 
 	@Override
 	public void initialize(ConfigurableApplicationContext applicationContext) {
+		TestDatabaseIsolation.assertEffectiveConfiguration(applicationContext.getEnvironment());
 		TestDatabaseIsolation.assertNotDevelopmentDatabase();
 	}
 }

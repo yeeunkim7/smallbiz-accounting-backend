@@ -77,6 +77,19 @@ finally {
 
 개발 DB와 **다른** 보호된 데이터베이스 `reconciliation_test`를 가리킵니다. 테스트를 개발 DB에서 돌리지 않습니다.
 
+테스트 가드는 DB 연결 전에 이름이 정확히 `reconciliation_test`인지 검사합니다. URL은
+`jdbc:postgresql://호스트:포트/reconciliation_test` 형식이며, 포트 생략과 IPv6를 지원합니다.
+쿼리 옵션은 `sslmode`, `connectTimeout`, `socketTimeout`만 허용합니다. 다른 옵션·서비스 파일·다중 호스트는 거절합니다.
+Spring의 실제 URL·사용자는 `TEST_DB_URL`·`TEST_DB_USERNAME`과 같아야 하며,
+별도 Flyway 접속 정보, Hikari 설정, JNDI·커스텀 DataSource·드라이버 설정은 허용하지 않습니다.
+이는 접속 설정 검사이며, DB 역할의 권한 분리를 대신하지 않습니다.
+
+가드 자체만 검사할 때는 다음 명령을 사용합니다. 이 테스트는 Spring 앱을 시작하거나 DB에 접속하지 않습니다.
+
+```sh
+bash gradlew test --tests com.smallbiz.reconciliation.vendor.TestDatabaseIsolationTest
+```
+
 ```powershell
 Set-Location "C:\Users\김예은\Desktop\Install\smallbiz-accounting-backend\backend-java"
 

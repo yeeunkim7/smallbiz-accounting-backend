@@ -207,3 +207,21 @@ PPT/PDF9장 렌더와 시각 검사, 발표자 노트·도형/PDF 텍스트 경�
 사용자의 다음 단계 진행 지시로 테스트용 가드만 보강했다. 정확한 reconciliation_test 이름과 명시적 PostgreSQL URL을 접속 전에 검사하고, 지원 옵션을 제한했다. Spring 실제 datasource가 환경 변수와 다른 경우 및 별도 Flyway·Hikari·JNDI·DataSource 설정을 거절한다. 독립 검토에서 발견한 Hikari DataSource class/중첩 databaseName 우회 경로를 수정하고 재검토했다. 제품 소스·마이그레이션은 변경하지 않았다.
 
 가드 단위 테스트 10개 통과(실패·오류·스킵 0). 명령: JAVA_HOME=/workspace/.local/jdk/usr/lib/jvm/java-21-openjdk-amd64 GRADLE_USER_HOME=/workspace/.gradle bash gradlew --offline --no-daemon --project-cache-dir /workspace/.local/gradle-project -Dorg.gradle.java.installations.paths=/workspace/.local/jdk/usr/lib/jvm/java-21-openjdk-amd64 test --tests com.smallbiz.reconciliation.vendor.TestDatabaseIsolationTest. 최초 캐시 권한·샌드박스 인터페이스 제한·시스템 JRE의 javac 누락으로 실행 전 중단됐고, 기존 작업 공간 JDK21을 확인·지정한 뒤 성공했다. 새 설치·실제 DB 연결·Flyway 실행·DB 역할 권한 확인·전체 회귀·유료 API 호출은 하지 않았다. 사용자 코드 검토와 실제 테스트 역할의 권한 확인은 남아 있으며, 다음 업무 검수는 아직 시작하지 않았다. 커밋·푸시는 하지 않았다.
+
+
+## 2026-11-10 배분 검수 전 실제 DB 격리 확인
+
+사용자의 다음 작업 진행 요청으로 기존 PostgreSQL17을 시작했다. 최초 실행은 복원 환경의 /var/run/postgresql 소켓 경로 부재로 실패했으며, 설정 파일을 바꾸지 않고 기존 /workspace/.local/run 경로를 기동 옵션으로 지정해 시작했다. reconciliation_test에 default_transaction_read_only=on으로 접속해 권한 메타데이터만 조회했다. 개발·테스트 접속 계정은 모두 agent이며, agent는 SUPERUSER·CREATEDB·CREATEROLE이고 두 DB를 소유하며 개발 DB CONNECT 권한도 있다. chagok_test/chagok_dev 역할은 존재하지 않았다. 이는 사용자 PC의 별도 계정 분리 기록과 다른 클라우드의 실제 상태다.
+
+DB 권한 격리 미충족으로 배분 통합 테스트·Flyway·테스트 데이터 생성/삭제는 실행하지 않았다. 역할·소유권·접근 권한·접속 설정은 변경하지 않았다. 클라우드 테스트 전용 비관리자 역할 및 개발 DB 접근 차단을 제안하며, 권한/접속 설정 변경 승인 후 재검증이 필요하다. 제품 코드·테스트 코드는 변경하지 않았고 커밋·푸시도 하지 않았다.
+
+
+## 2026-11-10 테스트 역할 분리 적용 및 배분 검수 완료
+
+사용자의 명시적 승인 후 클라우드에 chagok_test LOGIN 역할을 생성했다. SUPERUSER·CREATEDB·CREATEROLE·REPLICATION·BYPASSRLS를 모두 비활성화하고 역할 멤버십은 부여하지 않았다. 테스트의 임시 ALTER TABLE 검증을 지원하도록 reconciliation_test와 public 객체 소유권만 이 역할로 변경했다. 개발 DB 소유자 agent와 개발 접속 설정은 유지했다. 개발 DB의 PUBLIC CONNECT 및 테스트 역할 권한을 회수했다. 테스트 DB PUBLIC 권한도 회수했다. 생성한 비밀번호는 화면·소스에 출력하지 않고 저장소 밖 /workspace/.local/env.sh의 TEST_DB_USERNAME/PASSWORD만 교체(권한0600). 관리자 SQL을 포함하는 보조 스크립트에도 실제 비밀번호를 하드코딩하지 않았다.
+
+새 역할로 실제 접속하여 관리자 속성 전부false·개발 DB CONNECT false·개발 DB 로그인 permission denied를 확인했다. 개발 DB owner agent, 테스트 DB/public 테이블 owner chagok_test를 확인했다. 개발 거래 데이터는 조회·변경하지 않았다. 기존 Flyway V1~V13 성공 이력 유지, 새 마이그레이션 없음.
+
+AllocationIntegrationTest에 청구100000/입금40000의 정확한 검수 흐름 1개를 추가했다. 확정 후 미수60000, 동일 요청 기존 결과 재사용 및 배분1건, 잔액을 넘는 추가 배분409 후 미수60000 유지, 취소 후 미수100000/미배분40000, 원본 청구·입금 보존, 배분행1개와 확정·취소 감사2개를 검사한다. 기존 테스트는 동시성·초과 배분·후반 감사 실패 롤백도 검증한다. 독립 코드 재검토에서 추가 결함 없음.
+
+실행: source /workspace/.local/env.sh 후 JAVA_HOME=/workspace/.local/jdk/usr/lib/jvm/java-21-openjdk-amd64 GRADLE_USER_HOME=/workspace/.gradle bash gradlew --offline --no-daemon --project-cache-dir /workspace/.local/gradle-project -Dorg.gradle.java.installations.paths=/workspace/.local/jdk/usr/lib/jvm/java-21-openjdk-amd64 test --tests com.smallbiz.reconciliation.vendor.TestDatabaseIsolationTest --tests com.smallbiz.reconciliation.receivables.allocation.AllocationIntegrationTest. BUILD SUCCESSFUL、22초. XML: 가드10+배분18=총28개 통과, 실패·오류·스킵0. 테스트 후 임시 제약조건 제거·V13 성공 유지·개발 CONNECT 차단 유지 재확인. 유료 모델·전체 회귀·실기기·Supabase 연결은 미실행. 제품 소스 변경·환경 게시·커밋·푸시는 하지 않았다. 다음 검수는 별도 승인 후 진행한다.

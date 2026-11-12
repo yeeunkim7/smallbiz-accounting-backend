@@ -69,6 +69,44 @@ class AllocationIntegrationTest {
         }
     }
 
+    @Test void reviewedHundredThousandInvoiceFortyThousandPaymentRetryAndCancellationPreserveOriginals() throws Exception {
+        Owner owner = owner();
+        var invoice = invoice(owner, "100000", "2026-11-01");
+        var payment = payment(owner, "40000");
+        var lines = List.of(line(payment, invoice, "40000"));
+        var confirmed = confirm(owner, "review-confirm", lines, "partial payment review");
+        assertMoney(invoiceBalance(owner, invoice, "2026-11-01"),
+                "allocatedAmount", "40000", "outstandingAmount", "60000");
+        assertMoney(paymentBalance(owner, payment), "unallocatedAmount", "0");
+
+        assertThat(confirm(owner, "review-confirm", lines, "partial payment review")).isEqualTo(confirmed);
+        assertThat(count(owner, "receivable_allocation_batch")).isEqualTo(1);
+        assertThat(count(owner, "receivable_allocation_line")).isEqualTo(1);
+        assertThat(count(owner, "receivable_allocation_audit")).isEqualTo(1);
+
+        send(owner, "allocations", "review-over", request(List.of(line(payment, invoice, "1")), null), 409)
+                .andExpect(jsonPath("$.code").value("ALLOCATION_EXCEEDS_AVAILABLE"));
+        assertMoney(invoiceBalance(owner, invoice, "2026-11-01"),
+                "allocatedAmount", "40000", "outstandingAmount", "60000");
+        assertMoney(paymentBalance(owner, payment), "unallocatedAmount", "0");
+        assertThat(count(owner, "receivable_allocation_command")).isEqualTo(1);
+
+        var cancelled = cancel(owner, confirmed, "review-cancel", "incorrect connection");
+        assertMoney(summary(owner, "2026-11-01"), "invoiceAmount", "100000", "paymentAmount", "40000",
+                "allocatedAmount", "0", "outstandingAmount", "100000", "unallocatedAmount", "40000");
+        assertMoney(invoiceBalance(owner, invoice, "2026-11-01"), "outstandingAmount", "100000");
+        assertMoney(paymentBalance(owner, payment), "unallocatedAmount", "40000");
+        assertThat(cancelled.path("status").asText()).isEqualTo("CANCELLED");
+        assertThat(cancelled.path("lines")).isEqualTo(confirmed.path("lines"));
+        assertThat(cancelled.path("audit").get(0).path("eventType").asText()).isEqualTo("CONFIRMED");
+        assertThat(cancelled.path("audit").get(1).path("eventType").asText()).isEqualTo("CANCELLED");
+        assertThat(getJson(owner, "payments/" + id(payment))).isEqualTo(payment);
+        assertThat(getJson(owner, "invoices/" + id(invoice))).isEqualTo(invoice);
+        assertThat(count(owner, "receivable_allocation_line")).isEqualTo(1);
+        assertThat(count(owner, "receivable_allocation_cancellation")).isEqualTo(1);
+        assertThat(count(owner, "receivable_allocation_audit")).isEqualTo(2);
+    }
+
     @Test void partialPaymentsCompleteInvoiceAndCancellationRestoresExactBalancesAndAudit() throws Exception {
         Owner owner = owner();
         var invoice = invoice(owner, "100000", "2026-11-01");

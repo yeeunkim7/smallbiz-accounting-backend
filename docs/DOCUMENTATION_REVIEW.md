@@ -23,8 +23,8 @@ README·PORTFOLIO·AGENTS를 먼저 정리하고 기술 계약, 현재 계획, �
 | [docs/AI_REVIEW_WORK.md](AI_REVIEW_WORK.md) | 작업 기록 | 현재 요약과 과거 원문 분리; Objective 이하 기존 단계 이력 보존 |
 | [docs/AUTH_FOUNDATION.md](AUTH_FOUNDATION.md) | 기술 설계 / 작업 기록 | 현재 토큰 저장 구현 링크와 당시 인증 단계 기록 구분 |
 | [docs/LEGACY_RECONCILIATION.md](LEGACY_RECONCILIATION.md) | 프로젝트 소개 / 작업 기록 | 초기 범위·테이블 명시, 신규 기능 반복은 계약 링크화, 실무 경험은 확인 필요 |
-| [docs/PORTFOLIO.md](PORTFOLIO.md) | 포트폴리오 | 문제·데이터 흐름·결정 출처·실제 결함 2개·검증 한계로 재구성 |
-| [docs/PORTFOLIO_DELIVERY_PLAN.md](PORTFOLIO_DELIVERY_PLAN.md) | 포트폴리오 | 유지: 현재 계획·자료 기준 링크만 제공 |
+| `docs/PORTFOLIO.md` (현재 개인 보관) | 포트폴리오 | 문제·데이터 흐름·결정 출처·실제 결함 2개·검증 한계로 재구성 |
+| `docs/PORTFOLIO_DELIVERY_PLAN.md` (현재 개인 보관) | 포트폴리오 | 유지: 현재 계획·자료 기준 링크만 제공 |
 | [docs/RECEIVABLES_ALLOCATION.md](RECEIVABLES_ALLOCATION.md) | 기술 설계 | 유지: 실제 API·락·롤백·잔액 계약과 일치 |
 | [docs/RECEIVABLES_FREE_MVP_PLAN.md](RECEIVABLES_FREE_MVP_PLAN.md) | 의사결정 / 작업 기록 | 현재 구현·후속 우선순위 갱신; P0 이후 실행 이력 보존 |
 | [docs/RECEIVABLES_IMPORT.md](RECEIVABLES_IMPORT.md) | 기술 설계 | 한국어 정리, API·상한·오류 계약 유지, 모바일 CSV 후속 구분 |
@@ -46,9 +46,9 @@ README·PORTFOLIO·AGENTS를 먼저 정리하고 기술 계약, 현재 계획, �
 | [docs/ai-review-running.md](ai-review-running.md) | 기술 설계 / 작업 기록 | configured=false와 현재 PRO 포함 실행 차단·인증 구현 반영 |
 | [docs/architecture.md](architecture.md) | 기술 설계 | 실제 Service→JdbcTemplate 경계·잠금·트랜잭션·성능 한계 추가 |
 | [docs/auth-security-review.md](auth-security-review.md) | 작업 기록 | 개발자에게 전달을 구현 담당 에이전트에게 전달로 정정 |
-| [docs/demo/README.md](demo/README.md) | 포트폴리오 / 작업 기록 | 유지: 합성 자료·시드·실제 API·재녹화 범위 명확 |
+| `docs/demo/README.md` (현재 개인 보관) | 포트폴리오 / 작업 기록 | 유지: 합성 자료·시드·실제 API·재녹화 범위 명확 |
 | [docs/legacy-erd.md](legacy-erd.md) | 기술 설계 | 유지: 초기 전표안이며 현재 스키마와 다름이 명시됨 |
-| [docs/portfolio/README.md](portfolio/README.md) | 포트폴리오 | 자료 보존, Markdown 변경이 PPT/PDF에 자동 반영되지 않음을 명시 |
+| `docs/portfolio/README.md` (현재 개인 보관) | 포트폴리오 | 자료 보존, Markdown 변경이 PPT/PDF에 자동 반영되지 않음을 명시 |
 | [docs/receivables-allocation-review.md](receivables-allocation-review.md) | 작업 기록 | 기존 수치·날짜·결함·주체 보존, 당시 단계의 후속과 현재 구현 구분 |
 | [docs/receivables-domain-plan.md](receivables-domain-plan.md) | 기술 설계 / 의사결정 | 초기 제안과 현재 V9~V13 구현의 차이 명시; 기준 절 링크 갱신 |
 | [docs/receivables-erd.md](receivables-erd.md) | 기술 설계 | FK·제약·인덱스 목적과 서비스 합산 검사의 책임 명시 |
@@ -81,4 +81,18 @@ V1~V7까지만 있다는 설명을 현재 소스 V1~V13과 구분했다. 인증 
 
 ## 후속 반영 — 2026-11-03
 
-사용자 요청으로 전날 문서 정리를 커밋하고, 발표 PPT5장·PDF를 최신 설명으로 재구성했다. 위의 PPT 미동기화 항목은 이 후속 작업으로 처리했다. 소개서2쪽은 기존 자료로 남아 있다. [PORTFOLIO_LEARNING.md](PORTFOLIO_LEARNING.md)를 추가해 핵심 코드 학습을 준비했으며 사용자 학습·직접 구현 완료로 기록하지 않았다. 발표 렌더링·5장·노트·도형 경계와 로컬 링크를 확인했다. 사용자는 이번 변경의 커밋·푸시를 명시적으로 요청했다.
+사용자 요청으로 전날 문서 정리를 커밋하고, 발표 PPT5장·PDF를 최신 설명으로 재구성했다. 위의 PPT 미동기화 항목은 이 후속 작업으로 처리했다. 소개서2쪽은 기존 자료로 남아 있다. `PORTFOLIO_LEARNING.md` (현재 개인 보관)를 추가해 핵심 코드 학습을 준비했으며 사용자 학습·직접 구현 완료로 기록하지 않았다. 발표 렌더링·5장·노트·도형 경계와 로컬 링크를 확인했다. 사용자는 이번 변경의 커밋·푸시를 명시적으로 요청했다.
+
+
+## 2026-11-12 저장소 정리
+
+위 표와 검토 내용은 당시 기록이다. 현재 문서의 역할은 다음과 같이 구분한다.
+
+- 실행·현재 기능: 루트 README, backend-java/README.md, mobile/README.md.
+- 업무 계약·설계: RECEIVABLES_* 계약 문서, architecture.md, ERD, adr/. 과거 검증 수치는 실행 날짜와 함께 읽는다.
+- 근거와 이력: 독립 검토 문서, 검증 기록, AI_REVIEW_WORK.md. 비슷한 주제를 다뤄도 시점과 역할이 달라 원문을 보존했다.
+- 개인 발표자료: docs/portfolio/ 5개, docs/demo/ 5개, PORTFOLIO*.md 3개, portfolio-nov05-*.png 6개를 저장소 밖에 원본 보관하고 Git 추적에서 제외했다. 발표자료 안내는 개인 보관본의 ARCHIVE_README.md 한곳으로 모았다. PPT·PDF·영상은 재생성하지 않았다.
+
+과거 문서 검토의 개인 자료 링크는 경로 기록으로 바꾸고, 현재 안내는 저장소에 남은 아키텍처·계약·실행 기록으로 연결했다. 기술 문서·개발 검증 캡처는 유지한다. 과거 Git 이력에는 개인 자료가 남아 있으며 이번 작업은 이력을 재작성하지 않는다.
+
+현재 승인 범위는 Phase 0 정리다. 최종 확인 후 Phase 1 구조·업무 검토, 이후 Docker → CI → 서버 운영 → Slack 연동 조사 순서로 각 단계 승인을 받아 진행한다. 발표자료 제작은 실제 검증 이후 별도 작업이다.

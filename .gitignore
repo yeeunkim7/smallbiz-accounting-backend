@@ -60,3 +60,11 @@ venv/
 ### Legacy Python local database ###
 /accounting.db
 /accounting.db-*
+
+### Personal presentation materials (kept outside Git) ###
+/docs/portfolio/
+/docs/demo/
+/docs/PORTFOLIO.md
+/docs/PORTFOLIO_LEARNING.md
+/docs/PORTFOLIO_DELIVERY_PLAN.md
+/docs/screenshots/portfolio-nov05-*.png

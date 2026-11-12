@@ -39,3 +39,20 @@ build/
 ### Python tools ###
 __pycache__/
 *.py[cod]
+
+### Python local environments and caches ###
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+### Local secrets (keep the example) ###
+.env
+.env.*
+!.env.example
+
+### Local dependency caches and logs ###
+.gradle/
+/node_modules/
+*.log

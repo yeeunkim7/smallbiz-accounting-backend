@@ -225,3 +225,8 @@ DB 권한 격리 미충족으로 배분 통합 테스트·Flyway·테스트 데�
 AllocationIntegrationTest에 청구100000/입금40000의 정확한 검수 흐름 1개를 추가했다. 확정 후 미수60000, 동일 요청 기존 결과 재사용 및 배분1건, 잔액을 넘는 추가 배분409 후 미수60000 유지, 취소 후 미수100000/미배분40000, 원본 청구·입금 보존, 배분행1개와 확정·취소 감사2개를 검사한다. 기존 테스트는 동시성·초과 배분·후반 감사 실패 롤백도 검증한다. 독립 코드 재검토에서 추가 결함 없음.
 
 실행: source /workspace/.local/env.sh 후 JAVA_HOME=/workspace/.local/jdk/usr/lib/jvm/java-21-openjdk-amd64 GRADLE_USER_HOME=/workspace/.gradle bash gradlew --offline --no-daemon --project-cache-dir /workspace/.local/gradle-project -Dorg.gradle.java.installations.paths=/workspace/.local/jdk/usr/lib/jvm/java-21-openjdk-amd64 test --tests com.smallbiz.reconciliation.vendor.TestDatabaseIsolationTest --tests com.smallbiz.reconciliation.receivables.allocation.AllocationIntegrationTest. BUILD SUCCESSFUL、22초. XML: 가드10+배분18=총28개 통과, 실패·오류·스킵0. 테스트 후 임시 제약조건 제거·V13 성공 유지·개발 CONNECT 차단 유지 재확인. 유료 모델·전체 회귀·실기기·Supabase 연결은 미실행. 제품 소스 변경·환경 게시·커밋·푸시는 하지 않았다. 다음 검수는 별도 승인 후 진행한다.
+
+
+## 2026-11-12 로컬 SQLite 추적 제외
+
+사용자 승인으로 정리 브랜치에서 accounting.db의 Git 추적만 해제하고 루트 파일·보조 파일 제외 규칙을 추가했다. 기존 로컬 DB의 해시는 유지했고 데이터 행은 읽지 않았다. Java/PostgreSQL·Python 소스·마이그레이션 변경은 없다. 별도 임시 경로에서 기존 Alembic cc75580579fd를 적용·재실행하여 업무 테이블 3개·0행·무결성을 확인했다(SQLAlchemy 2.1.8, Alembic 1.20.1). 의존성은 저장소 밖 검증 가상환경에 설치했다. migrations/README에 초기화 및 다른 PC의 pull 전 백업 절차를 기록했다. 전체 Python API·Java 회귀는 이번 범위 밖이며 과거 Git 이력의 DB는 남는다.

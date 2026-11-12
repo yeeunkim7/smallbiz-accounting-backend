@@ -271,7 +271,7 @@ CSV 업로드는 multipart 요청의 `file` 필드를 사용합니다. CSV 헤�
 | [`migrations/`](../migrations) | FastAPI 실험용 DB 스키마 |
 | [`docs/legacy-erd.md`](legacy-erd.md) | 초기 전표 중심 설계 |
 
-FastAPI 실험 코드는 루트의 SQLite `accounting.db`를 사용하며, Java 앱과 프로세스·데이터베이스를 공유하지 않습니다. `docs/legacy-erd.md` 역시 현재 Java 스키마와는 별도의 초기 설계 문서입니다.
+FastAPI 실험 코드는 루트의 SQLite `accounting.db`를 사용하며, Java 앱과 프로세스·데이터베이스를 공유하지 않습니다. 이 DB는 로컬 전용이며 Git에서 제외합니다. [기존 DB 보존과 빈 DB 초기화](../migrations/README)를 확인하세요. `docs/legacy-erd.md` 역시 현재 Java 스키마와는 별도의 초기 설계 문서입니다.
 
 ## 읽기 전용 하루 AI 검토
 

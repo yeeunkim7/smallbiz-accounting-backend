@@ -1,1 +1,22 @@
-Generic single-database configuration.
+# 과거 Python 앱의 SQLite 초기화
+
+app/과 migrations/는 과거 FastAPI 실험 코드다. 현재 Java 백엔드의 PostgreSQL·Flyway와 별개다. accounting.db는 개인 로컬 데이터이며 Git에 포함하지 않는다.
+
+## 기존 데이터가 있는 경우
+
+이 추적 제외 커밋을 다른 PC에 적용하기 전에 Python 앱을 종료하고 accounting.db와 존재하는 accounting.db-* 파일을 저장소 밖에 백업한다. Git에서 추적 파일 삭제를 포함한 커밋을 pull/checkout하면 해당 PC의 기존 추적 파일이 제거될 수 있다. 적용 후 필요하면 백업을 원래 위치로 복원한다. 초기화 명령은 기존 데이터 복원이나 데이터 백업을 대신하지 않는다. 과거 Git 커밋의 DB는 이번 작업으로 지워지지 않는다.
+
+## 빈 DB로 스키마 확인
+
+저장소 루트에서 실행한다. 기존 DB를 건드리지 않도록 새 임시 폴더를 사용한다.
+
+```sh
+python3 -m venv .venv
+.venv/bin/python -m pip install 'SQLAlchemy==2.1.8' 'alembic==1.20.1'
+DB_CHECK_DIR=$(mktemp -d)
+DATABASE_URL="sqlite:///$DB_CHECK_DIR/accounting.db" .venv/bin/python -m alembic upgrade head
+```
+
+2026-11-12 Python 3.12, 위 두 패키지로 cc75580579fd 적용·재실행, 업무 테이블 3개 생성과 0행, SQLite 무결성을 확인했다. 시드 데이터는 생성하지 않는다. FastAPI 전체 실행에 필요한 의존성 목록·API 동작은 이번 검증 범위가 아니다.
+
+별도 경로를 쓰려면 DATABASE_URL에 SQLite 절대 경로를 지정한다. DATABASE_URL이 없으면 app/core/config.py에 따라 저장소 루트 accounting.db를 사용하므로, 실제 초기화 전에 대상 경로를 확인한다. Java 실행에는 이 작업이 필요 없다.

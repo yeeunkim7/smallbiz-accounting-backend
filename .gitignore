@@ -56,3 +56,7 @@ venv/
 .gradle/
 /node_modules/
 *.log
+
+### Legacy Python local database ###
+/accounting.db
+/accounting.db-*

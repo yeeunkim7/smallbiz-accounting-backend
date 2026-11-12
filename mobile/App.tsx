@@ -2,7 +2,11 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { BackHandler, KeyboardAvoidingView, Platform, Pressable, ScrollView, Text, View } from 'react-native';
 import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
-import { Api } from './src/api';
+import { Api, apiOrigin } from './src/api';
+import * as Crypto from 'expo-crypto';
+import { PendingPaymentRecovery, type PendingPayment } from './src/pending-payment';
+import { pendingPaymentStore } from './src/pending-payment-store';
+import { money, dateLabel } from './src/format';
 import { SessionState, StaleSession } from './src/session';
 import { vault } from './src/vault';
 import { AuthScreen, blankDraft, createCommand, Registration } from './src/forms';
@@ -71,6 +75,40 @@ function WorkspaceView({ w, me, tenant, logout, loggingOut, changeTenant }: { w:
   const [refresh, setRefresh] = useState(0), [notice, setNotice] = useState(''), [mutationBusy, setMutationBusy] = useState(false);
   const [drafts, setDrafts] = useState<Record<Resource, Draft>>(() => ({ invoices: blankDraft(), payments: blankDraft(), counterparties: blankDraft() }));
   const commands = useRef({ invoices: createCommand(), payments: createCommand(), counterparties: createCommand() });
+  const [paymentRecovery, setPaymentRecovery] = useState<PendingPaymentRecovery | null>(null);
+  const [pendingPayment, setPendingPayment] = useState<PendingPayment | null>(null);
+  const [paymentReady, setPaymentReady] = useState(false), [paymentLoadError, setPaymentLoadError] = useState('');
+  const [paymentLoadAttempt, setPaymentLoadAttempt] = useState(0);
+  const paymentLock = useRef(false);
+  useEffect(() => {
+    let active = true;
+    setPaymentReady(false); setPaymentLoadError(''); setPendingPayment(null); setPaymentRecovery(null);
+    if (w.sample || !me) { setPaymentReady(true); return; }
+    void (async () => {
+      try {
+        const epoch = w.api.sessionEpoch;
+        const recovery = new PendingPaymentRecovery(pendingPaymentStore,
+          { origin: apiOrigin(process.env.EXPO_PUBLIC_API_URL ?? ''), accountId: me.accountId, tenantId: tenant.id },
+          () => Crypto.randomUUID(),
+          (payload, key) => w.api.request<{ id: string }>(`${w.prefix}/payments`, { method: 'POST', body: payload, key, expectedEpoch: epoch }));
+        const pending = await recovery.load();
+        if (active) { setPaymentRecovery(recovery); setPendingPayment(pending); setPaymentReady(true); }
+      } catch (e) { if (active) setPaymentLoadError(failText(e)); }
+    })();
+    return () => { active = false; };
+  }, [w.api, w.sample, me?.accountId, tenant.id, paymentLoadAttempt]);
+  async function refreshPendingPayment() {
+    if (!paymentRecovery) return;
+    try { setPendingPayment(await paymentRecovery.load()); setPaymentLoadError(''); setPaymentReady(true); }
+    catch (e) { setPaymentReady(false); setPaymentLoadError(failText(e)); }
+  }
+  async function recoverPayment() {
+    if (!paymentRecovery || mutationBusy || paymentLock.current) return;
+    paymentLock.current = true; setMutationBusy(true); setNotice('');
+    try { const result = await paymentRecovery.retry(); registered('payments', result); }
+    catch (e) { if (!(e instanceof StaleSession)) setNotice(failText(e)); }
+    finally { await refreshPendingPayment(); paymentLock.current = false; setMutationBusy(false); }
+  }
   const scroll = useRef<React.ComponentRef<typeof ScrollView> | null>(null);
   const back = useCallback(() => { if (mutationBusy) return true; if (detail) { setDetail(null); return true; } if (form) { setForm(null); return true; } if (tab !== 'home') { setTab('home'); return true; } return false; }, [detail, form, tab, mutationBusy]);
   useEffect(() => { const sub = BackHandler.addEventListener('hardwareBackPress', back); return () => sub.remove(); }, [back]);
@@ -85,8 +123,19 @@ function WorkspaceView({ w, me, tenant, logout, loggingOut, changeTenant }: { w:
   return <><ScrollView ref={scroll} keyboardShouldPersistTaps="handled" contentContainerStyle={s.scroll}>
     {form || detail ? <View style={{ alignSelf: 'flex-start' }}><Button title="돌아가기" icon="arrow-back" quiet disabled={mutationBusy} onPress={back} /></View> : null}
     {notice ? <Notice>{notice}</Notice> : null}
+    {paymentLoadError ? <QueryError text={paymentLoadError} retry={() => setPaymentLoadAttempt(v => v + 1)} /> : null}
+    {pendingPayment ? <View style={[s.surface, { gap: 14 }]}>
+      <Text style={s.sectionTitle}>확인이 필요한 입금 등록</Text>
+      <Text style={s.body}>이전에 보낸 요청의 결과를 확인하지 못했어요. 새 입금을 추가하기 전에 같은 요청으로 결과를 확인해 주세요.</Text>
+      <Text style={s.sectionTitle}>{money(pendingPayment.payload.amount)}</Text>
+      <Text style={s.body}>입금일 {dateLabel(pendingPayment.payload.bookedDate)}</Text>
+      {pendingPayment.payload.payerName ? <Text style={s.body}>입금자 {pendingPayment.payload.payerName}</Text> : null}
+      {pendingPayment.payload.note ? <Text style={s.body}>메모 {pendingPayment.payload.note}</Text> : null}
+      <Button title="등록 결과 다시 확인" onPress={recoverPayment} busy={mutationBusy} disabled={!paymentReady} />
+      <Text style={s.muted}>자동으로 전송하지 않아요. 이미 등록됐다면 기존 결과를 가져옵니다.</Text>
+    </View> : null}
     {w.sample ? <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center' }}><Icon name="eye-outline" size={17} /><Text style={[s.muted, { color: color.primary }]}>샘플 체험 · 읽기 전용 · 기준일 2026.11.01</Text></View> : null}
-    {form ? <Registration key={form} w={w} resource={form} draft={drafts[form]} update={value => setDrafts(d => ({ ...d, [form]: value }))} command={commands.current[form]} registered={registered} changeResource={add} busyChange={setMutationBusy} /> : detail ? <DetailScreen w={w} id={detail} refresh={refresh} /> : tab === 'home' ? <HomeScreen w={w} refresh={refresh} add={add} open={open} all={() => setTab('ledger')} /> : tab === 'ledger' ? <LedgerScreen w={w} refresh={refresh} add={add} open={open} /> : tab === 'matching' ? null : <AccountScreen refresh={refresh} w={w} me={me} tenant={tenant} changeTenant={changeTenant} logout={logout} loggingOut={loggingOut} />}
+    {form === 'payments' && pendingPayment ? <Notice>위의 입금 등록 결과를 먼저 확인해 주세요.</Notice> : form ? <Registration key={form} w={w} resource={form} draft={drafts[form]} update={value => setDrafts(d => ({ ...d, [form]: value }))} command={commands.current[form]} registered={registered} changeResource={add} busyChange={setMutationBusy} paymentRecovery={paymentRecovery} paymentReady={paymentReady} paymentChanged={refreshPendingPayment} /> : detail ? <DetailScreen w={w} id={detail} refresh={refresh} /> : tab === 'home' ? <HomeScreen w={w} refresh={refresh} add={add} open={open} all={() => setTab('ledger')} /> : tab === 'ledger' ? <LedgerScreen w={w} refresh={refresh} add={add} open={open} /> : tab === 'matching' ? null : <AccountScreen refresh={refresh} w={w} me={me} tenant={tenant} changeTenant={changeTenant} logout={logout} loggingOut={loggingOut} />}
     {matchingVisited ? <View style={{ display: tab === 'matching' && !form && !detail ? 'flex' : 'none', gap: 28 }}><MatchingScreen w={w} refresh={refresh} busyChange={setMutationBusy} changed={() => setRefresh(v => v + 1)} /></View> : null}
     </ScrollView><View style={[s.nav, { paddingBottom: Math.max(insets.bottom, 8) }]}><View style={s.navInner}>{(['home', 'ledger', 'matching', 'account'] as Tab[]).map(t => <NavButton key={t} title={{ home: '홈', ledger: '장부', matching: '입금 연결', account: '계정' }[t]} icon={{ home: 'home-outline', ledger: 'albums-outline', matching: 'git-compare-outline', account: 'person-outline' }[t] as React.ComponentProps<typeof Icon>['name']} selected={tab === t && !form && !detail} disabled={mutationBusy} onPress={() => { if (t === 'matching') setMatchingVisited(true); setTab(t); setForm(null); setDetail(null); }} />)}</View></View></>;
 }

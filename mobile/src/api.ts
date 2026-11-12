@@ -28,6 +28,7 @@ const errorText = (status: number, code: string) => {
 };
 export class Api {
   constructor(private origin: string, private session: SessionState, private fetcher: typeof fetch = (...args) => fetch(...args)) {}
+  get sessionEpoch(): number { return this.session.epoch; }
   async revoke(): Promise<void> {
     const token = this.session.token;
     const abort = new AbortController();
@@ -38,7 +39,8 @@ export class Api {
     } catch { throw new Error('기기에서는 로그아웃했지만 서버 세션 종료를 확인하지 못했어요.'); }
     finally { clearTimeout(timer); }
   }
-  async request<T>(path: string, options: { method?: string; body?: unknown; key?: string; anonymous?: boolean } = {}): Promise<T> {
+  async request<T>(path: string, options: { method?: string; body?: unknown; key?: string; anonymous?: boolean; expectedEpoch?: number } = {}): Promise<T> {
+    if (options.expectedEpoch !== undefined) this.session.assert(options.expectedEpoch);
     const base = apiOrigin(this.origin);
     const epoch = this.session.epoch;
     const token = options.anonymous ? null : this.session.token;

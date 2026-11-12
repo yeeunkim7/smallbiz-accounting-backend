@@ -225,3 +225,27 @@ DB 권한 격리 미충족으로 배분 통합 테스트·Flyway·테스트 데�
 AllocationIntegrationTest에 청구100000/입금40000의 정확한 검수 흐름 1개를 추가했다. 확정 후 미수60000, 동일 요청 기존 결과 재사용 및 배분1건, 잔액을 넘는 추가 배분409 후 미수60000 유지, 취소 후 미수100000/미배분40000, 원본 청구·입금 보존, 배분행1개와 확정·취소 감사2개를 검사한다. 기존 테스트는 동시성·초과 배분·후반 감사 실패 롤백도 검증한다. 독립 코드 재검토에서 추가 결함 없음.
 
 실행: source /workspace/.local/env.sh 후 JAVA_HOME=/workspace/.local/jdk/usr/lib/jvm/java-21-openjdk-amd64 GRADLE_USER_HOME=/workspace/.gradle bash gradlew --offline --no-daemon --project-cache-dir /workspace/.local/gradle-project -Dorg.gradle.java.installations.paths=/workspace/.local/jdk/usr/lib/jvm/java-21-openjdk-amd64 test --tests com.smallbiz.reconciliation.vendor.TestDatabaseIsolationTest --tests com.smallbiz.reconciliation.receivables.allocation.AllocationIntegrationTest. BUILD SUCCESSFUL、22초. XML: 가드10+배분18=총28개 통과, 실패·오류·스킵0. 테스트 후 임시 제약조건 제거·V13 성공 유지·개발 CONNECT 차단 유지 재확인. 유료 모델·전체 회귀·실기기·Supabase 연결은 미실행. 제품 소스 변경·환경 게시·커밋·푸시는 하지 않았다. 다음 검수는 별도 승인 후 진행한다.
+
+
+## 2026-11-12 지난 검수 커밋 및 재시작 중복 등록 조사
+
+사용자 지시로 지난 배분 테스트·권한 분리 안내·작업 기록 3개 파일을 5a9cea9(테스트: 배분 재요청과 취소 후 원본 보존 검수 추가)로 커밋했다. 푸시는 요청 범위에 포함하지 않았다. 클라우드 DB 계정·비밀번호 설정 파일은 저장소 밖에 유지했다.
+
+다음 검수로 CommandKey+Api에 모의 서버를 넣은 메모리 경계 진단을 실행했다. 응답 유실 후 같은 객체로 재요청하면 모의 입금1건, 새 CommandKey 객체로 같은 입력을 보내면 다른 키가 생성돼 모의 입금2건이 됐다. 실제 앱/휴대폰 종료·시작이나 Java와 연결된 클라이언트 재현이 아니다. 실제 서버 동작은 기존 ReceivablesRegistrationIntegrationTest.normalizedIdempotentReplaysReturnOriginalAndKeysAreScopedByOperationAndTenant 1개를 전용 reconciliation_test/chagok_test로 실행해 통과(실패·오류·스킵0、12초) 확인했다. 테스트 전 비관리자·개발 CONNECT 차단을 재확인했다. 모바일 npm test13개 통과. 금액·날짜만으로 중복 삭제하면 정상 별도 입금을 훼손하므로 서버 정책은 변경하지 않았다.
+
+요청 키·입력 복구를 위한 저장 방식 대안·영향·완료 기준을 ADR0002의 승인 전 제안으로 정리했다. 민감한 입력의 기기/브라우저 보관 정책이 바뀌므로 사용자 결정 전에는 기능 구현하지 않는다. 새 라이브러리·마이그레이션·유료 API·외부 배포 없음. 이번 조사 문서는 지난 작업 커밋 이후 미커밋 상태로 남긴다.
+
+
+## 2026-11-12 입금 등록 재시작 복구 구현·검증
+
+사용자가 요청 키·입력 보관 후 명시적 재전송 방식의 입금 등록 복구 구현을 승인했다. PendingPaymentRecovery와 플랫폼 저장 어댑터를 추가하고 App/Registration에 연결했다. 전송 전에 불변 키·입력을 보관하고 저장 실패는 POST 이전에 거절한다. 서버 origin·계정·사업체로 격리하며 저장 대기 중 계정이 바뀌면 expectedEpoch로 전송을 차단한다. 미확인 요청은 임의 삭제·자동 재시도하지 않고 사용자 확인 버튼으로만 원래 키·내용을 재전송한다. 성공 응답 후 보관 정리를 완료해야 새 입금을 허용한다.
+
+Native는 SecureStore 단일 항목1800바이트 상한, Web은 IndexedDB 트랜잭션을 사용한다. Web 입력 원문은 앱 자체 암호화가 없으며 토큰은 보관하지 않는다. 보관·삭제·사이트 데이터 삭제 시 한계를 UI/모바일 README/ADR에 명시했다. 청구·배분·취소·후보의 영속 복구는 범위 밖이다. 새 라이브러리·서버 API·마이그레이션·제품 금액 계산 변경 없음.
+
+독립 검토에서 ISO 제어문자를 저장한 뒤 서버400으로 복구가 막히는 경로를 발견해 저장 전 검증을 서버와 맞추고 회귀 테스트를 추가했다. 코드포인트 길이와 키 형식도 일치시켰다. 재검토에서 추가 결함 없음. 타입 검사 통과, npm test: 기존·세션14개+복구12개=26개 통과.
+
+로컬 Java8091/Expo8081을 reconciliation_test/chagok_test로 실행하고 scripts/verify-payment-recovery-browser.py의 실제 Chromium5개 시나리오를 통과했다. 실제 서버가 입금을 저장한 뒤 응답만503으로 바꾸고, Chromium 프로세스·컨텍스트를 닫아 동일 디스크 프로필로 재시작했다. 다른 계정에는 미확인 카드가 없고 원래 계정에만 복구됐으며 자동 POST는0회였다. 명시적 재전송은 원래 키·본문과 같고 실제 payment1건/40000원 유지, 성공 후 IndexedDB0건, 저장소 차단 시 등록 버튼 비활성·POST0회, 페이지 오류0을 확인했다. 320px 화면 버튼 줄바꿈을 다듬었다. 문구 수정 후 최초 재실행은 CI Expo의 이전 번들 때문에 버튼 검색이 실패했으며 캐시 초기화·서버 재시작 후 최종5개를 다시 통과했다. Chromium은 샌드박스 밖 기존 시스템 설치본을 사용했으며 새 설치는 하지 않았다.
+
+기존 scripts/verify-receivables-mobile-browser.py를 새 복구 버튼 흐름에 맞춰 갱신하고 기존9개 회귀도 통과(페이지 오류0)했다. 가입·거래처·청구·잔액·입금 복구·사용량·세션 만료·샘플 API0회·반응형을 확인했다. 모든 검증은 새 합성 계정만 생성·정리했으며 개발 DB는 사용하지 않았다. 캡처는 저장소 밖 /workspace/.local/run/payment-recovery-tgdjhvu5 및 payment-recovery-core-regression에 두었다.
+
+명령: mobile에서 npm test / npm run typecheck. 루트에서 source /workspace/.local/env.sh 후 python3 scripts/verify-payment-recovery-browser.py, CHROMIUM_PATH=/usr/bin/chromium python3 scripts/verify-receivables-mobile-browser.py --screenshots /workspace/.local/run/payment-recovery-core-regression. iOS·Android SecureStore 실제 저장/재시작·전체 백엔드 회귀·유료 모델·외부 배포·Supabase는 미실행이다. 기능 코드 직접 검토는 사용자에게 남아 있으며, 이번 구현은 커밋·푸시하지 않았다.

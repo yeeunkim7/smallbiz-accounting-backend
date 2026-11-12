@@ -116,3 +116,12 @@ test('quota errors retain server usage and expose safe Korean guidance without r
   await assert.rejects(api.request('/tenants/a/matching-runs', { method: 'POST', body: { from: '2026-11-01', to: '2026-11-01' }, key: 'stable' }), (e: unknown) => e instanceof ApiError && e.usage?.remaining === 0 && e.message.includes('차감되지') && !e.message.includes('raw'));
   assert.equal(calls, 1);
 });
+test('a stored operation from an old session cannot dispatch under a new account', async () => {
+  const session = new SessionState(store(), () => {}); await session.set('old');
+  let calls = 0;
+  const api = new Api('https://example.test', session, (async () => { calls++; return response(201, { id: 'bad' }); }) as typeof fetch);
+  const epoch = api.sessionEpoch;
+  await session.clear(); await session.set('new');
+  await assert.rejects(api.request('/tenants/old/payments', { method: 'POST', expectedEpoch: epoch, key: 'old-key', body: {} }), StaleSession);
+  assert.equal(calls, 0);
+});

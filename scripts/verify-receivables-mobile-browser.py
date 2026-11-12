@@ -72,10 +72,10 @@ async def main():
     await route.fetch();await route.fulfill(status=503,json={'code':'SYNTHETIC_RESPONSE_LOST'});return
    await route.fallback()
   await context.route('**/payments',uncertain)
-  await page.get_by_role('button',name='입금 등록하기',exact=True).click();await expect(page.get_by_text('등록되었을 수도 있어요.',exact=False)).to_be_visible()
-  await page.get_by_label('입금자 이름 (선택)',exact=True).fill('합성 입금자 ');await page.get_by_role('button',name='입금 등록하기',exact=True).click();await expect(page.get_by_text('입금을 등록했어요.',exact=False)).to_be_visible()
+  await page.get_by_role('button',name='입금 등록하기',exact=True).click();await expect(page.get_by_text('확인이 필요한 입금 등록',exact=True)).to_be_visible()
+  await page.get_by_role('button',name='등록 결과 다시 확인',exact=True).click();await expect(page.get_by_text('입금을 등록했어요.',exact=False)).to_be_visible()
   assert attempts==2 and payment_keys[0] and payment_keys[0]==payment_keys[1]
-  assert len(api(prefix+'/payments')['items'])==1;checks.append('uncertainCommittedPaymentCanonicalRetryNoDuplicate')
+  assert len(api(prefix+'/payments')['items'])==1;checks.append('uncertainCommittedPaymentRecoveryNoDuplicate')
   await page.get_by_role('tab',name='홈',exact=True).click();await expect(page.get_by_text('100,000원',exact=True).first).to_be_visible();await expect(page.get_by_text('40,000원',exact=True)).to_be_visible();await page.screenshot(path=str(OUT/'mobile-core-live-home.png'));checks.append('unallocatedPaymentDoesNotReduceReceivable')
   await page.get_by_role('tab',name='계정',exact=True).click();await expect(page.get_by_text('이번 달 이용 현황',exact=True)).to_be_visible();assert api(prefix+'/matching-usage')['completed']==0;await page.screenshot(path=str(OUT/'mobile-core-account.png'));checks.append('serverUsageAndRegistrationZeroCharge')
   assert await page.evaluate('Object.keys(localStorage).length')==0 and await page.evaluate('Object.keys(sessionStorage).length')==0;checks.append('webNoTokenPersistence')

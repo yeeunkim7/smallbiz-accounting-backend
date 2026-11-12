@@ -4,6 +4,7 @@ import * as Crypto from 'expo-crypto';
 import type { Api } from './api';
 import { ApiError } from './api';
 import { CommandKey } from './commands';
+import type { PendingPaymentRecovery, PaymentInput } from './pending-payment';
 import { failText, useLoad, type Workspace } from './data';
 import { StaleSession } from './session';
 import { koreaToday, validAmount, validDate } from './format';
@@ -37,14 +38,14 @@ export function AuthScreen({ api, accepted, sample, initialMessage }: { api: Api
     <View style={[s.surface, s.gap]}><Text style={s.sectionTitle}>{signup ? '내 사업장 시작하기' : '다시 만나 반가워요'}</Text>{initialMessage ? <Notice>{initialMessage}</Notice> : null}{error ? <Notice error>{error}</Notice> : null}<Field label="아이디" value={login} onChange={setLogin} autoComplete="username" disabled={busy} hint="이메일 형식도 사용할 수 있어요. 이메일 인증은 제공하지 않아요." maxLength={120} /><Field label="비밀번호" value={password} onChange={setPassword} secret autoComplete={signup ? 'new-password' : 'current-password'} disabled={busy} hint={signup ? '12자 이상 · 72바이트 이내' : undefined} />{signup ? <Field label="사업장 이름" value={tenantName} onChange={setTenantName} maxLength={100} disabled={busy} /> : null}<Button title={signup ? '가입하고 시작하기' : '로그인'} onPress={submit} busy={busy} /><Button title={signup ? '이미 계정이 있어요 · 로그인' : '처음이신가요? · 회원가입'} quiet disabled={busy} onPress={() => { setSignup(v => !v); setError(''); }} /></View>
 </View>;
 }
-export function Registration({ w, resource, draft, update, command, registered, changeResource, busyChange }: { w: Workspace; resource: Resource; draft: Draft; update(value: Draft): void; command: CommandKey; registered(r: Resource, result: { id: string }): void; changeResource(r: Resource): void; busyChange(value: boolean): void }) {
+export function Registration({ w, resource, draft, update, command, registered, changeResource, busyChange, paymentRecovery, paymentReady, paymentChanged }: { w: Workspace; resource: Resource; draft: Draft; update(value: Draft): void; command: CommandKey; registered(r: Resource, result: { id: string }): void; changeResource(r: Resource): void; busyChange(value: boolean): void; paymentRecovery: PendingPaymentRecovery | null; paymentReady: boolean; paymentChanged(): Promise<void> }) {
   const [busy, setBusy] = useState(false), [error, setError] = useState('');
   const locked = useRef(false);
   const set = (key: keyof Draft, value: string) => { update({ ...draft, [key]: value }); };
   const field = (key: keyof Draft, label: string, extra: Partial<React.ComponentProps<typeof Field>> = {}) => <Field label={label} value={draft[key]} onChange={v => set(key, v)} disabled={busy} {...extra} />;
   const name = resource === 'invoices' ? '청구' : resource === 'payments' ? '입금' : '거래처';
   async function submit() {
-    if (locked.current) return;
+    if (locked.current || (resource === 'payments' && (!paymentReady || !paymentRecovery))) return;
     let payload: unknown;
     if (resource === 'counterparties') {
       if (!/^[a-z0-9_-]{1,32}$/i.test(draft.code.trim()) || !draft.name.trim() || Array.from(draft.name.trim()).length > 100) { setError('거래처 이름과 코드를 확인해 주세요. 코드는 영문·숫자·_·- 1~32자예요.'); return; }
@@ -62,13 +63,15 @@ export function Registration({ w, resource, draft, update, command, registered, 
     }
     locked.current = true; setBusy(true); busyChange(true); setError('');
     try {
-      const result = await w.api.request<{ id: string }>(`${w.prefix}/${resource}`, { method: 'POST', body: payload, key: command.forPayload(payload) });
+      const result = resource === 'payments'
+        ? await paymentRecovery!.submit(payload as PaymentInput)
+        : await w.api.request<{ id: string }>(`${w.prefix}/${resource}`, { method: 'POST', body: payload, key: command.forPayload(payload) });
       command.succeeded(); registered(resource, result);
     } catch (e) {
       if (e instanceof StaleSession) return;
       const uncertain = e instanceof ApiError && (e.status === 0 || e.status >= 500);
       setError(`${failText(e)}${uncertain ? ' 등록되었을 수도 있어요. 내용을 바꾸지 않고 다시 누르면 같은 요청으로 확인해요.' : ''}`);
-    } finally { locked.current = false; setBusy(false); busyChange(false); }
+    } finally { if (resource === 'payments') await paymentChanged(); locked.current = false; setBusy(false); busyChange(false); }
   }
   return <View style={{ gap: 24, maxWidth: 600, width: '100%', alignSelf: 'center' }}><Heading eyebrow="직접 기록" title={`${name} 추가`} subtitle={resource === 'invoices' ? '고객에게 청구한 금액과 입금 기한을 기록하세요.' : resource === 'payments' ? '받은 입금을 기록해 두세요. 청구 연결은 별도예요.' : '청구를 기록할 거래처를 먼저 등록하세요.'} />{error ? <Notice error>{error}</Notice> : null}
     {resource === 'counterparties' ? <>{field('name', '거래처 이름', { maxLength: 100 })}{field('code', '거래처 코드', { maxLength: 32, hint: '거래처를 구분할 짧은 이름 · 예: GREEN_01 (영문·숫자·_·-)' })}</> : <>
@@ -76,7 +79,7 @@ export function Registration({ w, resource, draft, update, command, registered, 
       {field('amount', '금액 (원)', { numeric: true, maxLength: 13, hint: amountHint })}
       {resource === 'invoices' ? <>{field('issueDate', '청구일', { hint: 'YYYY-MM-DD · 예: 2026-11-01', maxLength: 10 })}{field('dueDate', '입금 기한', { hint: 'YYYY-MM-DD · 청구일 이후 날짜', maxLength: 10 })}</> : <>{field('bookedDate', '입금일', { hint: 'YYYY-MM-DD · 직접 확인한 날짜', maxLength: 10 })}{field('payerName', '입금자 이름 (선택)', { maxLength: 100 })}{field('note', '메모 (선택)', { maxLength: 1000, multiline: true })}<Notice>입금 등록은 청구 상환이나 은행 확인을 뜻하지 않아요. 연결 전 입금으로 보관해요.</Notice></>}
     </>}
-    <Button title={`${name} 등록하기`} onPress={submit} busy={busy} /><Text style={s.muted}>입력 내용은 화면을 이동해도 유지돼요. 로그아웃하거나 사업장을 바꾸면 지워져요.</Text></View>;
+    <Button title={`${name} 등록하기`} onPress={submit} busy={busy} disabled={resource === 'payments' && (!paymentReady || !paymentRecovery)} /><Text style={s.muted}>{resource === 'payments' ? '금액·입금자명·메모와 요청 정보는 결과 확인까지 이 기기에 임시 보관해요. 로그아웃 후에도 같은 계정·사업장에서 확인할 수 있어요. 브라우저에서는 사이트 데이터 삭제 시 사라져요. 긴 입금자명·메모는 모바일 보관 한도로 전송이 제한될 수 있어요.' : '입력 내용은 화면을 이동해도 유지돼요. 로그아웃하거나 사업장을 바꾸면 지워져요.'}</Text></View>;
 }
 function CustomerPicker({ w, selected, choose, disabled }: { w: Workspace; selected: string; choose(id: string): void; disabled: boolean }) {
   const [page, setPage] = useState(0);

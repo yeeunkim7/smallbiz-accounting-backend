@@ -26,7 +26,7 @@
     "ios": "expo start --ios",
     "web": "expo start --web",
     "typecheck": "tsc --noEmit",
-    "test": "node --experimental-transform-types tests/critical.test.ts"
+    "test": "node --experimental-transform-types tests/critical.test.ts && node --experimental-transform-types tests/pending-payment.test.ts"
   },
   "private": true,
   "type": "module"
